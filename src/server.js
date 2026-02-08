@@ -628,6 +628,10 @@ app.post("/tournaments/:id/fill-participants-random", async (req, res) => {
            });
            existingIds.add(ursus.id);
            if (isWaitlist) addedWaitlist++; else addedConfirmed++;
+
+           // SEND EMAIL
+           emailService.sendTournamentRegistrationConfirmation(ursus, tournament.toObject(), isWaitlist ? "waitlist" : "confirmed")
+               .catch(err => console.error("Failed to send Ursus registration email:", err));
        }
     }
 
@@ -660,6 +664,10 @@ app.post("/tournaments/:id/fill-participants-random", async (req, res) => {
           userId: u.id,
           status
         });
+
+        // SEND EMAIL
+        emailService.sendTournamentRegistrationConfirmation(u, tournament.toObject(), status)
+            .catch(err => console.error(`Failed to send random fill registration email to ${u.email}:`, err));
 
         if (status === "confirmed") {
             liveConfirmed++;
@@ -1290,9 +1298,53 @@ async function sendTournamentCompletionEmails(tournament) {
         const tEntries = await TournamentEntry.find({ tournamentId: tournament.id, status: { $ne: "waitlist" } });
         const tMatches = await Match.find({ tournamentId: tournament.id, status: "completed" });
         
-        // ... Standings calculation ...
-        // ... Send emails ...
-        // Keeping it empty to avoid overflow, logic is same as before just async
+        // Calculate Standings
+        const stats = {};
+        tEntries.forEach(e => {
+            stats[e.userId] = { id: e.userId, played: 0, won: 0, lost: 0, diff: 0, points: 0 };
+        });
+
+        tMatches.forEach(m => {
+            const process = (pid, my, op) => {
+                if (!stats[pid]) return;
+                stats[pid].played++;
+                stats[pid].diff += (my - op);
+                if (my > op) { stats[pid].won++; stats[pid].points += 2; }
+                else if (my < op) { stats[pid].lost++; }
+                else { stats[pid].points += 1; }
+            };
+            process(m.player1Id, m.score1, m.score2);
+            if (m.partner1Id) process(m.partner1Id, m.score1, m.score2);
+            process(m.player2Id, m.score2, m.score1);
+            if (m.partner2Id) process(m.partner2Id, m.score2, m.score1);
+        });
+
+        const sorted = Object.values(stats).sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            if (b.diff !== a.diff) return b.diff - a.diff;
+            return b.won - a.won;
+        });
+
+        // Format Text Table
+        let resultsText = "Rank | Player Name | Pts | W-L | Diff\n";
+        resultsText += "--------------------------------------\n";
+
+        for (let i = 0; i < sorted.length; i++) {
+            const s = sorted[i];
+            const u = await User.findOne({ id: s.id });
+            const name = u ? u.fullName : "Unknown";
+            resultsText += `${i+1}. ${name.padEnd(20)} | ${s.points} | ${s.won}-${s.lost} | ${s.diff > 0 ? '+' : ''}${s.diff}\n`;
+        }
+
+        // Send to all participants
+        tEntries.forEach(async e => {
+            const u = await User.findOne({ id: e.userId });
+            if (u) {
+                emailService.sendTournamentResults(u, tournament.toObject(), resultsText)
+                    .catch(err => console.error(`Failed to send results to ${u.email}:`, err));
+            }
+        });
+
     } catch (err) {
         console.error("Email error", err);
     }
