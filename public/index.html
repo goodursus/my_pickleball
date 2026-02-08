@@ -1,0 +1,4419 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pickleball App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      background: #f3f4f6;
+    }
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .app-header {
+      padding: 12px 16px;
+      background: #111827;
+      color: #f9fafb;
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .app-content {
+      flex: 1;
+      padding: 12px 16px 64px;
+      box-sizing: border-box;
+    }
+    .section {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+    .section-title {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .item {
+      padding: 8px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .item:last-child {
+      border-bottom: none;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: #e5e7eb;
+      margin-left: 8px;
+    }
+    .badge-role {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+    .badge-status {
+      background: #dcfce7;
+      color: #15803d;
+    }
+    .small {
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .error {
+      color: #b91c1c;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    .tabs {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      border-top: 1px solid #e5e7eb;
+      background: #ffffff;
+    }
+    .tab {
+      flex: 1;
+      padding: 8px 4px 10px;
+      text-align: center;
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .tab-active {
+      color: #111827;
+      font-weight: 600;
+    }
+    .tab-label {
+      display: block;
+    }
+    .pill {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #fee2e2;
+      color: #b91c1c;
+      font-size: 11px;
+      margin-left: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script>
+    var e = React.createElement;
+
+    var FORMAT_MODES = {
+        "Round Robin": [
+            { value: "fixed", label: "Fixed (Standard)" },
+            { value: "waterfall", label: "Waterfall (King of Court)" },
+            { value: "shuffle", label: "Shuffle Doubles (Rotating Partner)" }
+        ],
+        "Waterfall": [
+             { value: "waterfall", label: "Waterfall (Standard)" }
+        ],
+        "Single Elimination": [
+            { value: "fixed", label: "Fixed (Standard)" }
+        ],
+        "Double Elimination": [
+            { value: "fixed", label: "Fixed (Standard)" }
+        ],
+        "Pool Play": [
+            { value: "fixed", label: "Fixed (Standard)" },
+            { value: "shuffle", label: "Shuffle (Random Pools)" }
+        ],
+        "Ladder": [
+            { value: "fixed", label: "Fixed (Standard)" }
+        ]
+    };
+
+    function formatDate(dateStr) {
+      if (!dateStr) return "TBD";
+      return new Date(dateStr).toLocaleString(undefined, {
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+      });
+    }
+
+    function DateTimeInput(props) {
+      var value = props.value || "";
+      var onChange = props.onChange;
+      
+      var datePart = "";
+      var timePart = "";
+      if (value) {
+         var parts = value.split("T");
+         datePart = parts[0];
+         timePart = parts[1] || "00:00";
+      }
+      
+      var hour24 = timePart ? parseInt(timePart.split(":")[0]) : 12;
+      if (isNaN(hour24)) hour24 = 12;
+      
+      var minuteVal = timePart ? parseInt(timePart.split(":")[1]) : 0;
+      if (isNaN(minuteVal)) minuteVal = 0;
+      
+      var ampm = hour24 >= 12 ? "PM" : "AM";
+      var hour12 = hour24 % 12;
+      if (hour12 === 0) hour12 = 12;
+      
+      function update(d, h12, m, ap) {
+          if (!d) {
+              onChange(""); 
+              return;
+          }
+          var h24 = parseInt(h12);
+          if (ap === "PM" && h24 < 12) h24 += 12;
+          if (ap === "AM" && h24 === 12) h24 = 0;
+          
+          var hStr = String(h24).padStart(2, "0");
+          var mStr = String(m).padStart(2, "0");
+          
+          onChange(d + "T" + hStr + ":" + mStr);
+      }
+      
+      return e("div", { style: { display: "flex", gap: 8, alignItems: "center" } },
+          e("input", {
+              type: "date",
+              value: datePart,
+              onChange: function(ev) { update(ev.target.value, hour12, minuteVal, ampm); },
+              style: { flex: 2, padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+          }),
+          e("div", { style: { display: "flex", gap: 4, flex: 3 } },
+              e("select", {
+                  value: hour12,
+                  onChange: function(ev) { update(datePart, ev.target.value, minuteVal, ampm); },
+                  style: { flex: 1, padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+              }, 
+                [1,2,3,4,5,6,7,8,9,10,11,12].map(function(h) { return e("option", { key: h, value: h }, h); })
+              ),
+              e("input", {
+                  type: "number",
+                  min: 0,
+                  max: 59,
+                  value: minuteVal,
+                  onChange: function(ev) { update(datePart, hour12, ev.target.value, ampm); },
+                  style: { flex: 1, padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+              }),
+               e("select", {
+                  value: ampm,
+                  onChange: function(ev) { update(datePart, hour12, minuteVal, ev.target.value); },
+                  style: { flex: 1, padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+              },
+                  e("option", { value: "AM" }, "AM"),
+                  e("option", { value: "PM" }, "PM")
+              )
+          )
+      );
+    }
+
+    function App() {
+      var _React$useState = React.useState("home"),
+        view = _React$useState[0],
+        setView = _React$useState[1];
+      var _React$useState2 = React.useState([]),
+        users = _React$useState2[0],
+        setUsers = _React$useState2[1];
+      var _React$useState3 = React.useState([]),
+        tournaments = _React$useState3[0],
+        setTournaments = _React$useState3[1];
+      var _React$useState4 = React.useState(false),
+        loading = _React$useState4[0],
+        setLoading = _React$useState4[1];
+      var _React$useState5 = React.useState(""),
+        error = _React$useState5[0],
+        setError = _React$useState5[1];
+      var _React$useState6 = React.useState(null),
+        currentUser = _React$useState6[0],
+        setCurrentUser = _React$useState6[1];
+      var _React$useStateRecent = React.useState(5),
+        tempRecentCount = _React$useStateRecent[0],
+        setTempRecentCount = _React$useStateRecent[1];
+      var _React$useState7 = React.useState("login"),
+        authMode = _React$useState7[0],
+        setAuthMode = _React$useState7[1];
+      var _React$useState8 = React.useState(""),
+        authEmail = _React$useState8[0],
+        setAuthEmail = _React$useState8[1];
+      var _React$useState9 = React.useState(""),
+        authPassword = _React$useState9[0],
+        setAuthPassword = _React$useState9[1];
+      var _React$useState10 = React.useState(""),
+        authFullName = _React$useState10[0],
+        setAuthFullName = _React$useState10[1];
+      var _React$useStateAuthNotif = React.useState("None"),
+        authNotification = _React$useStateAuthNotif[0],
+        setAuthNotification = _React$useStateAuthNotif[1];
+      var _React$useStateAuthPhone = React.useState(""),
+        authPhone = _React$useStateAuthPhone[0],
+        setAuthPhone = _React$useStateAuthPhone[1];
+      var _React$useStateAuthCity = React.useState(""),
+        authCity = _React$useStateAuthCity[0],
+        setAuthCity = _React$useStateAuthCity[1];
+      var _React$useStateAuthCountry = React.useState(""),
+        authCountry = _React$useStateAuthCountry[0],
+        setAuthCountry = _React$useStateAuthCountry[1];
+      var _React$useStateAuthSkill = React.useState("Unknown"),
+        authSkillLevel = _React$useStateAuthSkill[0],
+        setAuthSkillLevel = _React$useStateAuthSkill[1];
+      var _React$useStateAuthMatches = React.useState(5),
+        authMatchesCount = _React$useStateAuthMatches[0],
+        setAuthMatchesCount = _React$useStateAuthMatches[1];
+      var _React$useState11 = React.useState("Player"),
+        authRole = _React$useState11[0],
+        setAuthRole = _React$useState11[1];
+      var _React$useState12 = React.useState(null),
+        selectedTournament = _React$useState12[0],
+        setSelectedTournament = _React$useState12[1];
+      var _React$useState13 = React.useState(""),
+        editDescription = _React$useState13[0],
+        setEditDescription = _React$useState13[1];
+      var _React$useState14 = React.useState(""),
+        editCourtsCount = _React$useState14[0],
+        setEditCourtsCount = _React$useState14[1];
+      var _React$useStateEditName = React.useState(""),
+        editName = _React$useStateEditName[0],
+        setEditName = _React$useStateEditName[1];
+      var _React$useStateEditStartDate = React.useState(""),
+        editStartDate = _React$useStateEditStartDate[0],
+        setEditStartDate = _React$useStateEditStartDate[1];
+      var _React$useStateEditDuration = React.useState(""),
+        editDurationMinutes = _React$useStateEditDuration[0],
+        setEditDurationMinutes = _React$useStateEditDuration[1];
+      var _React$useStateEditMax = React.useState(""),
+        editMaxParticipants = _React$useStateEditMax[0],
+        setEditMaxParticipants = _React$useStateEditMax[1];
+      var _React$useStateEditRounds = React.useState(""),
+        editRoundsCount = _React$useStateEditRounds[0],
+        setEditRoundsCount = _React$useStateEditRounds[1];
+      var _React$useStateEditRoundDur = React.useState(""),
+        editRoundDurationMinutes = _React$useStateEditRoundDur[0],
+        setEditRoundDurationMinutes = _React$useStateEditRoundDur[1];
+      var _React$useStateEditBreak = React.useState(""),
+        editBreakTimeMinutes = _React$useStateEditBreak[0],
+        setEditBreakTimeMinutes = _React$useStateEditBreak[1];
+      var _React$useStateEditSched = React.useState("fixed"),
+        editSchedulingMode = _React$useStateEditSched[0],
+        setEditSchedulingMode = _React$useStateEditSched[1];
+      var _React$useStateEditType = React.useState("Singles"),
+        editType = _React$useStateEditType[0],
+        setEditType = _React$useStateEditType[1];
+      var _React$useState15 = React.useState(false),
+        editing = _React$useState15[0],
+        setEditing = _React$useState15[1];
+      var _React$useState16 = React.useState(false),
+        saving = _React$useState16[0],
+        setSaving = _React$useState16[1];
+      var _React$useState17 = React.useState(""),
+        ctName = _React$useState17[0],
+        setCtName = _React$useState17[1];
+      var _React$useState18 = React.useState(""),
+        ctDescription = _React$useState18[0],
+        setCtDescription = _React$useState18[1];
+      var _React$useState19 = React.useState(""),
+        ctLocationName = _React$useState19[0],
+        setCtLocationName = _React$useState19[1];
+      var _React$useState20 = React.useState(""),
+        ctCity = _React$useState20[0],
+        setCtCity = _React$useState20[1];
+      var _React$useState21 = React.useState(""),
+        ctCountry = _React$useState21[0],
+        setCtCountry = _React$useState21[1];
+      var _React$useState22 = React.useState(""),
+        ctCourtsCount = _React$useState22[0],
+        setCtCourtsCount = _React$useState22[1];
+      var _React$useState23 = React.useState(""),
+        ctStartDate = _React$useState23[0],
+        setCtStartDate = _React$useState23[1];
+      var _React$useState24 = React.useState(""),
+        ctDurationMinutes = _React$useState24[0],
+        setCtDurationMinutes = _React$useState24[1];
+      var _React$useState25 = React.useState(""),
+        ctMaxParticipants = _React$useState25[0],
+        setCtMaxParticipants = _React$useState25[1];
+      var _React$useStateFormat = React.useState("Round Robin"),
+        ctFormat = _React$useStateFormat[0],
+        setCtFormat = _React$useStateFormat[1];
+      var _React$useStateRounds = React.useState(""),
+        ctRoundsCount = _React$useStateRounds[0],
+        setCtRoundsCount = _React$useStateRounds[1];
+      var _React$useStateRoundDur = React.useState(""),
+        ctRoundDurationMinutes = _React$useStateRoundDur[0],
+        setCtRoundDurationMinutes = _React$useStateRoundDur[1];
+      var _React$useStateBreak = React.useState(""),
+        ctBreakTimeMinutes = _React$useStateBreak[0],
+        setCtBreakTimeMinutes = _React$useStateBreak[1];
+      var _React$useStateType = React.useState("Singles"),
+        ctType = _React$useStateType[0],
+        setCtType = _React$useStateType[1];
+      var _React$useStateSched = React.useState("fixed"),
+        ctSchedulingMode = _React$useStateSched[0],
+        setCtSchedulingMode = _React$useStateSched[1];
+      var _React$useState26 = React.useState(false),
+        ctSaving = _React$useState26[0],
+        setCtSaving = _React$useState26[1];
+      var _React$useState27 = React.useState([]),
+        myTournamentsData = _React$useState27[0],
+        setMyTournamentsData = _React$useState27[1];
+      var _React$useStateDispute = React.useState(null),
+        disputingMatchId = _React$useStateDispute[0],
+        setDisputingMatchId = _React$useStateDispute[1];
+      var _React$useState28 = React.useState([]),
+        participantsConfirmed = _React$useState28[0],
+        setParticipantsConfirmed = _React$useState28[1];
+      var _React$useState29 = React.useState([]),
+        participantsWaitlist = _React$useState29[0],
+        setParticipantsWaitlist = _React$useState29[1];
+      var _React$useState30 = React.useState("active"),
+        homeFilter = _React$useState30[0],
+        setHomeFilter = _React$useState30[1];
+
+      // Profile state
+      var _React$useStateProfile = React.useState(null),
+        profileUser = _React$useStateProfile[0],
+        setProfileUser = _React$useStateProfile[1];
+      var _React$useStateProfName = React.useState(""),
+        editProfileName = _React$useStateProfName[0],
+        setEditProfileName = _React$useStateProfName[1];
+      var _React$useStateProfNotif = React.useState("None"),
+        editProfileNotification = _React$useStateProfNotif[0],
+        setEditProfileNotification = _React$useStateProfNotif[1];
+      var _React$useStateProfPhone = React.useState(""),
+        editProfilePhone = _React$useStateProfPhone[0],
+        setEditProfilePhone = _React$useStateProfPhone[1];
+      var _React$useStateProfMatches = React.useState(5),
+        editProfileMatchesCount = _React$useStateProfMatches[0],
+        setEditProfileMatchesCount = _React$useStateProfMatches[1];
+      var _React$useStateProfRole = React.useState("Player"),
+        editProfileRole = _React$useStateProfRole[0],
+        setEditProfileRole = _React$useStateProfRole[1];
+      var _React$useStateProfCity = React.useState(""),
+        editProfileCity = _React$useStateProfCity[0],
+        setEditProfileCity = _React$useStateProfCity[1];
+      var _React$useStateProfCountry = React.useState(""),
+        editProfileCountry = _React$useStateProfCountry[0],
+        setEditProfileCountry = _React$useStateProfCountry[1];
+      var _React$useStateProfSkill = React.useState("Unknown"),
+        editProfileSkillLevel = _React$useStateProfSkill[0],
+        setEditProfileSkillLevel = _React$useStateProfSkill[1];
+      
+      var _React$useStateEditFormat = React.useState("Round Robin"),
+        editFormat = _React$useStateEditFormat[0],
+        setEditFormat = _React$useStateEditFormat[1];
+
+      // Auto-calculate rounds count when duration parameters change
+      React.useEffect(function() {
+          if (ctDurationMinutes && ctRoundDurationMinutes) {
+               var dur = Number(ctDurationMinutes);
+               var roundDur = Number(ctRoundDurationMinutes);
+               var breakTime = Number(ctBreakTimeMinutes) || 0;
+               
+               if (roundDur + breakTime > 0) {
+                   var max = Math.floor((dur + breakTime) / (roundDur + breakTime));
+                   // Only update if current value is empty or was auto-calculated (checking against old max might be tricky, so just set it)
+                   // User asked to "display calculated amount"
+                   setCtRoundsCount(max);
+               }
+          }
+      }, [ctDurationMinutes, ctRoundDurationMinutes, ctBreakTimeMinutes]);
+
+      // Auto-calculate rounds count when duration parameters change (Edit Mode)
+      React.useEffect(function() {
+          if (editing && editDurationMinutes && editRoundDurationMinutes) {
+               var dur = Number(editDurationMinutes);
+               var roundDur = Number(editRoundDurationMinutes);
+               var breakTime = Number(editBreakTimeMinutes) || 0;
+               
+               if (roundDur + breakTime > 0) {
+                   var max = Math.floor((dur + breakTime) / (roundDur + breakTime));
+                   // For editing, we might want to respect existing value if it's lower, or just set it if not set?
+                   // But typically if user changes duration, they expect rounds to update.
+                   // If they haven't touched duration, we shouldn't force overwrite unless we are initializing?
+                   // The prompt implies "In the new field... display the calculated amount".
+                   // So we should probably default to the max if not set, or update it.
+                   // Let's only update if the calculated max is *less* than current value (to enforce limit) or if we want to suggest it.
+                   // But "display calculated amount" suggests we should show the max possible.
+                   // I'll set it to max.
+                   setEditRoundsCount(max);
+               }
+          }
+      }, [editing, editDurationMinutes, editRoundDurationMinutes, editBreakTimeMinutes]);
+
+
+
+      var _React$useStateMatches = React.useState([]),
+        matches = _React$useStateMatches[0],
+        setMatches = _React$useStateMatches[1];
+
+      var _React$useStateMyMatches = React.useState([]),
+        myMatches = _React$useStateMyMatches[0],
+        setMyMatches = _React$useStateMyMatches[1];
+
+      var _React$useStateRankings = React.useState([]),
+        rankingsData = _React$useStateRankings[0],
+        setRankingsData = _React$useStateRankings[1];
+
+      var _React$useStateFormats = React.useState(["Round Robin"]),
+        tournamentFormats = _React$useStateFormats[0],
+        setTournamentFormats = _React$useStateFormats[1];
+
+      var _React$useStateTimer = React.useState(null),
+        timerString = _React$useStateTimer[0],
+        setTimerString = _React$useStateTimer[1];
+
+      var _React$useStateTourTimer = React.useState(null),
+        tourTimerString = _React$useStateTourTimer[0],
+        setTourTimerString = _React$useStateTourTimer[1];
+
+      var _React$useStateShowParticipants = React.useState(true),
+        showParticipants = _React$useStateShowParticipants[0],
+        setShowParticipants = _React$useStateShowParticipants[1];
+
+      var _React$useStateShowWaitlist = React.useState(true),
+        showWaitlist = _React$useStateShowWaitlist[0],
+        setShowWaitlist = _React$useStateShowWaitlist[1];
+
+      // Round Timer Logic
+      React.useEffect(function() {
+         if (!selectedTournament || !selectedTournament.roundStartTime) {
+             setTimerString(null);
+             return;
+         }
+         
+         var interval = setInterval(function() {
+             var start = new Date(selectedTournament.roundStartTime).getTime();
+             var now = Date.now();
+             
+             if (selectedTournament.roundDurationMinutes) {
+                 var durationMs = selectedTournament.roundDurationMinutes * 60 * 1000;
+                 var end = start + durationMs;
+                 var remaining = end - now;
+                 
+                 if (remaining <= 0) {
+                     setTimerString("00:00 (Finished)");
+                 } else {
+                     var m = Math.floor(remaining / 60000);
+                     var s = Math.floor((remaining % 60000) / 1000);
+                     setTimerString(String(m).padStart(2, '0') + ":" + String(s).padStart(2, '0'));
+                 }
+             } else {
+                 // Show elapsed time if no duration
+                 var elapsed = now - start;
+                 var m = Math.floor(elapsed / 60000);
+                 var s = Math.floor((elapsed % 60000) / 1000);
+                 setTimerString(String(m).padStart(2, '0') + ":" + String(s).padStart(2, '0'));
+             }
+         }, 1000);
+         
+         return function() { clearInterval(interval); };
+      }, [selectedTournament]);
+
+      React.useEffect(function() {
+         if(currentUser) setTempRecentCount(currentUser.recentMatchesCount || 5);
+      }, [currentUser]);
+
+      // Tournament Timer Logic
+      React.useEffect(function() {
+         if (!selectedTournament || selectedTournament.status !== "In Progress" || !selectedTournament.startDate) {
+             setTourTimerString(null);
+             return;
+         }
+         
+         var interval = setInterval(function() {
+             var start = new Date(selectedTournament.startDate).getTime();
+             var now = Date.now();
+             
+             if (selectedTournament.durationMinutes) {
+                 var durationMs = selectedTournament.durationMinutes * 60 * 1000;
+                 var end = start + durationMs;
+                 var remaining = end - now;
+                 
+                 if (remaining <= 0) {
+                     setTourTimerString("00:00 (Finished)");
+                 } else {
+                     var h = Math.floor(remaining / 3600000);
+                     var m = Math.floor((remaining % 3600000) / 60000);
+                     var s = Math.floor((remaining % 60000) / 1000);
+                     setTourTimerString(String(h).padStart(2, '0') + ":" + String(m).padStart(2, '0') + ":" + String(s).padStart(2, '0'));
+                 }
+             } else {
+                 // Show elapsed time if no duration
+                 var elapsed = now - start;
+                 var h = Math.floor(elapsed / 3600000);
+                 var m = Math.floor((elapsed % 3600000) / 60000);
+                 var s = Math.floor((elapsed % 60000) / 1000);
+                 setTourTimerString(String(h).padStart(2, '0') + ":" + String(m).padStart(2, '0') + ":" + String(s).padStart(2, '0'));
+             }
+         }, 1000);
+         
+         return function() { clearInterval(interval); };
+      }, [selectedTournament]);
+
+      function refreshTournaments() {
+          fetch("/tournaments").then(function(r){return r.json()}).then(setTournaments);
+      }
+
+      React.useEffect(function() {
+        if (!selectedTournament) return;
+        var interval = setInterval(function() {
+            Promise.all([
+                fetch("/tournaments/" + selectedTournament.id).then(function(r){return r.json()}),
+                fetch("/tournaments/" + selectedTournament.id + "/matches").then(function(r){return r.json()})
+            ]).then(function(res) {
+                var t = res[0];
+                var m = res[1];
+                
+                if(t && !t.error) {
+                    var changed = t.status !== selectedTournament.status ||
+                                  t.currentRound !== selectedTournament.currentRound ||
+                                  t.roundStartTime !== selectedTournament.roundStartTime ||
+                                  t.startDate !== selectedTournament.startDate ||
+                                  t.registeredCount !== selectedTournament.registeredCount ||
+                                  t.waitlistCount !== selectedTournament.waitlistCount ||
+                                  JSON.stringify(t.courtProgress) !== JSON.stringify(selectedTournament.courtProgress);
+                    
+                    if (changed) {
+                        setSelectedTournament(t);
+                        refreshTournaments();
+                    }
+                }
+                
+                if(Array.isArray(m)) {
+                    // Check if matches changed to avoid unnecessary re-renders (deep comparison simplified)
+                    var mStr = JSON.stringify(m);
+                    var oldStr = JSON.stringify(matches);
+                    if (mStr !== oldStr) setMatches(m);
+                }
+            }).catch(console.error);
+        }, 3000);
+        return function() { clearInterval(interval); };
+      }, [selectedTournament, matches]);
+
+      function refreshParticipants(tournamentId) {
+        if (!tournamentId) return;
+        fetch("/tournaments/" + tournamentId + "/participants")
+          .then(function(res) {
+            if (!res.ok) throw new Error("Failed to fetch participants");
+            return res.json();
+          })
+          .then(function(data) {
+            setParticipantsConfirmed(data.confirmed || []);
+            setParticipantsWaitlist(data.waitlist || []);
+            // Also refresh tournaments list for stats
+            fetch("/tournaments")
+              .then(function(r) { return r.json(); })
+              .then(setTournaments)
+              .catch(function(e) { console.error(e); });
+          })
+          .catch(function(err) {
+            console.error(err);
+          });
+      }
+
+      function refreshMatches(tournamentId) {
+        if (!tournamentId) return;
+        fetch("/tournaments/" + tournamentId + "/matches")
+          .then(function(res) { 
+             if (!res.ok) throw new Error("Failed to fetch matches");
+             return res.json(); 
+          })
+          .then(function(data) { setMatches(Array.isArray(data) ? data : []); })
+          .catch(function(e) { console.error(e); setMatches([]); });
+      }
+
+      function refreshUserData() {
+        if (!currentUser) return;
+        Promise.all([
+          fetch("/me/tournaments", { headers: { "x-user-id": currentUser.id } }),
+          fetch("/me/matches", { headers: { "x-user-id": currentUser.id } })
+        ])
+        .then(function(responses) {
+           return Promise.all([
+             responses[0].ok ? responses[0].json() : [],
+             responses[1].ok ? responses[1].json() : []
+           ]);
+        })
+        .then(function(data) {
+           setMyTournamentsData(data[0]);
+           setMyMatches(data[1]);
+        })
+        .catch(console.error);
+      }
+
+      function loadRankings() {
+        setLoading(true);
+        fetch("/rankings")
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            setRankingsData(data);
+            setLoading(false);
+          })
+          .catch(function (err) {
+            console.error(err);
+            setLoading(false);
+          });
+      }
+
+      React.useEffect(function() {
+        if (currentUser) {
+           if (view === "home") refreshUserData();
+           if (view === "rankings") loadRankings();
+        }
+      }, [view, currentUser]);
+
+      React.useEffect(function() {
+        if (!selectedTournament) {
+          setParticipantsConfirmed([]);
+          setParticipantsWaitlist([]);
+          setMatches([]);
+          return;
+        }
+        refreshParticipants(selectedTournament.id);
+        refreshMatches(selectedTournament.id);
+      }, [selectedTournament]);
+
+      React.useEffect(
+        function () {
+          try {
+            var stored = window.localStorage.getItem("currentUser");
+            if (stored) {
+              var parsed = JSON.parse(stored);
+              if (parsed && parsed.id && parsed.email) {
+                setCurrentUser(parsed);
+              }
+            }
+          } catch (e) {}
+        },
+        []
+      );
+
+      React.useEffect(function () {
+        var cancelled = false;
+        function load() {
+          if (!currentUser) {
+            return;
+          }
+          setLoading(true);
+          Promise.all([
+            fetch("/users"),
+            fetch("/tournaments"),
+            fetch("/me/tournaments", {
+              headers: { "x-user-id": currentUser.id }
+            }),
+            fetch("/me/matches", {
+              headers: { "x-user-id": currentUser.id }
+            }),
+            fetch("/meta/formats")
+          ])
+            .then(function (responses) {
+              // Check for 401 Unauthorized (session invalid)
+              if (responses.some(function(r) { return r.status === 401; })) {
+                 setCurrentUser(null);
+                 try { window.localStorage.removeItem("currentUser"); } catch(e) {}
+                 setView("home");
+                 // Don't throw normal error, just stop
+                 return Promise.reject("SESSION_EXPIRED");
+              }
+
+              if (!responses[0].ok || !responses[1].ok) {
+                throw new Error("Failed to load core data");
+              }
+
+              return Promise.all([
+                responses[0].json(),
+                responses[1].json(),
+                responses[2].ok ? responses[2].json() : Promise.resolve([]),
+                responses[3].ok ? responses[3].json() : Promise.resolve([]),
+                responses[4].ok ? responses[4].json() : Promise.resolve(["Round Robin"])
+              ]);
+            })
+            .then(function (data) {
+              if (cancelled) {
+                return;
+              }
+              setUsers(Array.isArray(data[0]) ? data[0] : []);
+              setTournaments(Array.isArray(data[1]) ? data[1] : []);
+              setMyTournamentsData(Array.isArray(data[2]) ? data[2] : []); 
+              setMyMatches(Array.isArray(data[3]) ? data[3] : []);
+              setTournamentFormats(Array.isArray(data[4]) ? data[4] : ["Round Robin"]);
+              setError("");
+            })
+            .catch(function (err) {
+              if (cancelled) {
+                return;
+              }
+              if (err === "SESSION_EXPIRED") {
+                  return; // Already handled
+              }
+              setError(err.message || "Failed to load data");
+            })
+            .finally(function () {
+              if (cancelled) {
+                return;
+              }
+              setLoading(false);
+            });
+        }
+        load();
+        return function () {
+          cancelled = true;
+        };
+      }, [currentUser]);
+
+      function handleLogin(event) {
+        event.preventDefault();
+        setError("");
+        setLoading(true);
+        fetch("/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: authEmail, password: authPassword })
+        })
+          .then(function (res) {
+            if (!res.ok) {
+              throw new Error("Invalid email or password");
+            }
+            return res.json();
+          })
+          .then(function (data) {
+            var user = data.user || null;
+            setCurrentUser(user);
+            try {
+              window.localStorage.setItem("currentUser", JSON.stringify(user));
+            } catch (e) {}
+            setView("home");
+          })
+          .catch(function (err) {
+            setError(err.message || "Login failed");
+          })
+          .finally(function () {
+            setLoading(false);
+          });
+      }
+
+      function handleSignup(event) {
+        event.preventDefault();
+        setError("");
+        if (!authFullName) {
+          setError("Full name is required");
+          return;
+        }
+        if (authNotification === "WhatsApp" && !authPhone) {
+          setError("Phone number is required for WhatsApp notifications");
+          return;
+        }
+        setLoading(true);
+        fetch("/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: authEmail,
+            password: authPassword,
+            fullName: authFullName,
+            location: (authCity || authCountry) ? ((authCity || "") + (authCity && authCountry ? ", " : "") + (authCountry || "")) : null,
+            skillLevel: authSkillLevel,
+            preferredNotificationChannel: authNotification,
+            recentMatchesCount: Number(authMatchesCount) || 5,
+            phone: authPhone
+          })
+        })
+          .then(function (res) {
+            if (!res.ok) {
+              if (res.status === 409) {
+                throw new Error("User with this email already exists");
+              }
+              throw new Error("Signup failed");
+            }
+            return res.json();
+          })
+          .then(function (user) {
+            setCurrentUser(user);
+            try {
+              window.localStorage.setItem("currentUser", JSON.stringify(user));
+            } catch (e) {}
+            setView("home");
+          })
+          .catch(function (err) {
+            setError(err.message || "Signup failed");
+          })
+          .finally(function () {
+            setLoading(false);
+          });
+      }
+
+      function handleUseDemoAdmin() {
+        setAuthEmail("admin@pickleapp.com");
+        setAuthPassword("Admin123!");
+      }
+
+      function handleTournamentClick(tournament) {
+        setSelectedTournament(tournament);
+        setEditName(tournament.name || "");
+        setEditDescription(tournament.description || "");
+        setEditCourtsCount(
+          tournament.courtsCount != null ? String(tournament.courtsCount) : ""
+        );
+        setEditStartDate(tournament.startDate || "");
+        setEditDurationMinutes(
+          tournament.durationMinutes != null ? String(tournament.durationMinutes) : ""
+        );
+        setEditRoundDurationMinutes(
+          tournament.roundDurationMinutes != null ? String(tournament.roundDurationMinutes) : ""
+        );
+        setEditBreakTimeMinutes(
+          tournament.breakTimeMinutes != null ? String(tournament.breakTimeMinutes) : ""
+        );
+        setEditMaxParticipants(
+          tournament.maxParticipants != null ? String(tournament.maxParticipants) : ""
+        );
+        setEditFormat(tournament.format || "Round Robin");
+        setEditSchedulingMode(tournament.schedulingMode || "fixed");
+        setEditType(tournament.type || "Singles");
+        setEditing(false);
+        setView("tournamentDetails");
+      }
+
+      function handleSaveTournament(event) {
+        event.preventDefault();
+        if (!currentUser || !selectedTournament) {
+          return;
+        }
+        setSaving(true);
+        setError("");
+        var body = {
+          name: editName,
+          description: editDescription,
+          courtsCount: editCourtsCount ? Number(editCourtsCount) : 0,
+          startDate: editStartDate || null,
+          durationMinutes: editDurationMinutes ? Number(editDurationMinutes) : null,
+          roundDurationMinutes: editRoundDurationMinutes ? Number(editRoundDurationMinutes) : null,
+          breakTimeMinutes: editBreakTimeMinutes ? Number(editBreakTimeMinutes) : 0,
+          maxParticipants: editMaxParticipants ? Number(editMaxParticipants) : null,
+          format: editFormat,
+          schedulingMode: editSchedulingMode,
+          type: editType
+        };
+        fetch("/tournaments/" + selectedTournament.id, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": currentUser.id
+          },
+          body: JSON.stringify(body)
+        })
+          .then(function (res) {
+            if (!res.ok) {
+              if (res.status === 403) {
+                throw new Error("Only organizer can edit this tournament");
+              }
+              throw new Error("Failed to save tournament");
+            }
+            return res.json();
+          })
+          .then(function (updated) {
+            setSelectedTournament(updated);
+            setTournaments(
+              tournaments.map(function (t) {
+                return t.id === updated.id ? updated : t;
+              })
+            );
+            setEditing(false);
+          })
+          .catch(function (err) {
+            setError(err.message || "Failed to save tournament");
+          })
+          .finally(function () {
+            setSaving(false);
+          });
+      }
+
+      function handleDeleteTournament() {
+        if (!selectedTournament || !currentUser) return;
+        if (!confirm("Are you sure you want to delete this tournament? This action cannot be undone.")) return;
+        
+        setSaving(true);
+        setError("");
+        
+        fetch("/tournaments/" + selectedTournament.id, {
+          method: "DELETE",
+          headers: {
+            "x-user-id": currentUser.id
+          }
+        })
+          .then(function (res) {
+            if (!res.ok) {
+              return res.json().then(function (data) {
+                throw new Error(data.error || "Failed to delete tournament");
+              });
+            }
+            return res.json();
+          })
+          .then(function () {
+            setTournaments(
+              tournaments.filter(function (t) {
+                return t.id !== selectedTournament.id;
+              })
+            );
+            setView("home");
+            setSelectedTournament(null);
+          })
+          .catch(function (err) {
+            setError(err.message || "Failed to delete tournament");
+          })
+          .finally(function () {
+            setSaving(false);
+          });
+      }
+
+      function handleCopyTournament(t) {
+        // Strip existing date suffix (DD-MM-YY) to get a clean base name
+        var baseName = t.name.replace(/\s\d{2}-\d{2}-\d{2}$/, "");
+        
+        setCtName(baseName);
+        setCtDescription(t.description || "");
+        if (t.location) {
+            setCtLocationName(t.location.name || "");
+            setCtCity(t.location.city || "");
+            setCtCountry(t.location.country || "");
+        } else {
+            setCtLocationName("");
+            setCtCity("");
+            setCtCountry("");
+        }
+        setCtCourtsCount(t.courtsCount || "");
+        setCtDurationMinutes(t.durationMinutes || "");
+        setCtMaxParticipants(t.maxParticipants || "");
+        setCtFormat(t.format || "Round Robin");
+        setCtRoundsCount(t.roundsCount || "");
+        setCtRoundDurationMinutes(t.roundDurationMinutes || "");
+        setCtStartDate("");
+        setError("");
+        setView("createTournament");
+      }
+
+      function handleLogout() {
+        setCurrentUser(null);
+        setUsers([]);
+        setTournaments([]);
+        setSelectedTournament(null);
+        setMyTournamentsData([]);
+        setEditing(false);
+        setSaving(false);
+        setCtName("");
+        setCtDescription("");
+        setCtLocationName("");
+        setCtCity("");
+        setCtCountry("");
+        setCtCourtsCount("");
+        setError("");
+        setView("home");
+        try {
+          window.localStorage.removeItem("currentUser");
+        } catch (e) {}
+      }
+
+      function handleOpenProfile(userToEdit) {
+          // If no user passed, open own profile
+          var target = userToEdit || currentUser;
+          if (!target) return;
+          
+          setProfileUser(target);
+          setEditProfileName(target.fullName || "");
+          setEditProfileNotification(target.preferredNotificationChannel || "None");
+          setEditProfilePhone(target.phone || "");
+          setEditProfileMatchesCount(target.recentMatchesCount || 5);
+          setEditProfileRole(target.role || "Player");
+          setEditProfileCity(target.location ? target.location.city : "");
+          setEditProfileCountry(target.location ? target.location.country : "");
+          setEditProfileSkillLevel(target.skillLevel || "Unknown");
+          
+          setView("profile");
+      }
+
+      function handleSaveProfile(e) {
+          e.preventDefault();
+          if (!currentUser || !profileUser) return;
+
+          if (editProfileNotification === "WhatsApp" && !editProfilePhone) {
+              setError("Phone number is required for WhatsApp notifications");
+              return;
+          }
+          
+          setSaving(true);
+          setError("");
+          
+          var body = {
+              fullName: editProfileName,
+              preferredNotificationChannel: editProfileNotification,
+              phone: editProfilePhone,
+              recentMatchesCount: Number(editProfileMatchesCount),
+              location: {
+                  city: editProfileCity,
+                  country: editProfileCountry
+              },
+              skillLevel: editProfileSkillLevel
+          };
+          
+          // Only organizer can update role
+          if (currentUser.role === "Organizer") {
+              body.role = editProfileRole;
+          }
+          
+          fetch("/users/" + profileUser.id, {
+              method: "PATCH",
+              headers: {
+                  "Content-Type": "application/json",
+                  "x-user-id": currentUser.id
+              },
+              body: JSON.stringify(body)
+          })
+          .then(function(res) {
+              if (!res.ok) throw new Error("Failed to update profile");
+              return res.json();
+          })
+          .then(function(updated) {
+              // If we updated ourselves, update currentUser
+              if (currentUser.id === updated.id) {
+                  setCurrentUser(updated);
+                  try {
+                      window.localStorage.setItem("currentUser", JSON.stringify(updated));
+                  } catch(e) {}
+              }
+              // If we updated someone else (as admin), we might need to refresh user list if we had one displayed
+              setProfileUser(updated);
+              
+              // Update users list to keep Admin Profile view in sync
+              setUsers(users.map(function(u) {
+                  return u.id === updated.id ? updated : u;
+              }));
+              
+              // Refresh rankings to keep Rankings tab in sync
+              loadRankings();
+
+              alert("Profile updated successfully");
+              
+              if (view === "profile") {
+                  // Stay on profile
+              }
+          })
+          .catch(function(err) {
+              setError(err.message);
+          })
+          .finally(function() {
+              setSaving(false);
+          });
+      }
+
+      function handleCreateTournamentClick() {
+        setCtName("");
+        setCtDescription("");
+        setCtLocationName("");
+        setCtCity("");
+        setCtCountry("");
+        setCtCourtsCount("");
+        setCtStartDate("");
+        setCtDurationMinutes("");
+        setCtMaxParticipants("");
+        setCtFormat("Round Robin");
+        setCtType("Singles");
+        setCtRoundsCount("");
+        setCtRoundDurationMinutes("");
+        setCtBreakTimeMinutes("");
+        setError("");
+        setView("createTournament");
+      }
+
+      function handleCreateTournament(event) {
+        event.preventDefault();
+        if (!currentUser) {
+          return;
+        }
+        setCtSaving(true);
+        setError("");
+        var body = {
+          name: ctName,
+          description: ctDescription,
+          location: ctLocationName
+            ? {
+                name: ctLocationName,
+                city: ctCity || "",
+                country: ctCountry || ""
+              }
+            : null,
+          startDate: ctStartDate || null,
+          endDate: null,
+          durationMinutes: ctDurationMinutes
+            ? Number(ctDurationMinutes)
+            : null,
+          maxParticipants: ctMaxParticipants
+            ? Number(ctMaxParticipants)
+            : null,
+          courtsCount: ctCourtsCount ? Number(ctCourtsCount) : 0,
+          roundsCount: ctRoundsCount ? Number(ctRoundsCount) : null,
+          roundDuration: ctRoundDurationMinutes ? Number(ctRoundDurationMinutes) : null,
+          breakTimeMinutes: ctBreakTimeMinutes ? Number(ctBreakTimeMinutes) : 0,
+          type: ctType,
+          format: ctFormat,
+          schedulingMode: ctSchedulingMode
+        };
+        fetch("/tournaments", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": currentUser.id
+          },
+          body: JSON.stringify(body)
+        })
+          .then(function (res) {
+            return res
+              .json()
+              .catch(function () {
+                return {};
+              })
+              .then(function (data) {
+                if (!res.ok) {
+                  var message =
+                    data && data.error
+                      ? data.error
+                      : res.status === 403
+                      ? "Only organizer can create tournaments"
+                      : res.status === 400
+                      ? "Failed to create tournament (bad request)"
+                      : "Failed to create tournament";
+                  throw new Error(message);
+                }
+                return data;
+              });
+          })
+          .then(function (created) {
+            setTournaments([created].concat(tournaments));
+            setSelectedTournament(created);
+            // Organizer is not automatically registered
+            // setMyTournamentIds(myTournamentIds.concat(created.id));
+            setView("tournamentDetails");
+          })
+          .catch(function (err) {
+            setError(err.message || "Failed to create tournament");
+          })
+          .finally(function () {
+            setCtSaving(false);
+          });
+      }
+
+      function handleMakeOrganizer(user) {
+        if (!currentUser) {
+          return;
+        }
+        setError("");
+        fetch("/users/" + user.id + "/promote-organizer", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": currentUser.id
+          }
+        })
+          .then(function (res) {
+            if (!res.ok) {
+              if (res.status === 403) {
+                throw new Error("Only organizer can change roles");
+              }
+              throw new Error("Failed to update role");
+            }
+            return res.json();
+          })
+          .then(function (updated) {
+            setUsers(
+              users.map(function (u) {
+                return u.id === updated.id ? updated : u;
+              })
+            );
+          })
+          .catch(function (err) {
+            setError(err.message || "Failed to update role");
+          });
+      }
+
+      function handleRevokeOrganizer(user) {
+        if (!currentUser) {
+          return;
+        }
+        setError("");
+        fetch("/users/" + user.id + "/revoke-organizer", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": currentUser.id
+          }
+        })
+          .then(function (res) {
+            if (!res.ok) {
+              if (res.status === 403) {
+                throw new Error("Only organizer can change roles");
+              }
+              return res.json().then(function(err) { throw new Error(err.error || "Failed to update role"); });
+            }
+            return res.json();
+          })
+          .then(function (updated) {
+            setUsers(
+              users.map(function (u) {
+                return u.id === updated.id ? updated : u;
+              })
+            );
+          })
+          .catch(function (err) {
+            setError(err.message || "Failed to update role");
+          });
+      }
+
+      function handleJoinTournament() {
+        if (!currentUser || !selectedTournament) {
+          return;
+        }
+        setError("");
+        fetch("/tournaments/" + selectedTournament.id + "/join", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": currentUser.id
+          }
+        })
+          .then(function (res) {
+            return res
+              .json()
+              .catch(function () {
+                return {};
+              })
+              .then(function (data) {
+                if (!res.ok) {
+                  var message =
+                    data && data.error
+                      ? data.error
+                      : res.status === 400
+                      ? "Could not join tournament"
+                      : "Failed to join tournament";
+                  throw new Error(message);
+                }
+                return data;
+              });
+          })
+          .then(function (entry) {
+            // Re-fetch my tournaments to get updated status
+            fetch("/me/tournaments", { headers: { "x-user-id": currentUser.id } })
+               .then(function(r){ return r.json() })
+               .then(setMyTournamentsData);
+
+            refreshParticipants(selectedTournament.id);
+            
+            // Refresh tournaments list and update selectedTournament to ensure UI state is consistent
+            fetch("/tournaments")
+              .then(function(r){ return r.json(); })
+              .then(function(data) {
+                  setTournaments(data);
+                  // Update selectedTournament with the fresh object from the list to get updated counts/status
+                  var updated = data.find(function(t) { return t.id === selectedTournament.id; });
+                  if (updated) setSelectedTournament(updated);
+              });
+          })
+          .catch(function (err) {
+            setError(err.message || "Failed to join tournament");
+          });
+      }
+
+      function handleLeaveTournament() {
+        if (!currentUser || !selectedTournament) {
+          return;
+        }
+        setError("");
+        fetch("/tournaments/" + selectedTournament.id + "/leave", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": currentUser.id
+          }
+        })
+          .then(function (res) {
+            return res
+              .json()
+              .catch(function () {
+                return {};
+              })
+              .then(function (data) {
+                if (!res.ok) {
+                  var message =
+                    data && data.error
+                      ? data.error
+                      : res.status === 400
+                      ? "Could not leave tournament"
+                      : "Failed to leave tournament";
+                  throw new Error(message);
+                }
+                return data;
+              });
+          })
+          .then(function () {
+            setMyTournamentsData(
+              myTournamentsData.filter(function (t) {
+                return t.id !== selectedTournament.id;
+              })
+            );
+            refreshParticipants(selectedTournament.id);
+            // Refresh tournaments list and update selectedTournament
+            fetch("/tournaments")
+              .then(function(r){ return r.json(); })
+              .then(function(data) {
+                  setTournaments(data);
+                  var updated = data.find(function(t) { return t.id === selectedTournament.id; });
+                  if (updated) setSelectedTournament(updated);
+              });
+          })
+          .catch(function (err) {
+            setError(err.message || "Failed to leave tournament");
+          });
+      }
+
+      function handleFillParticipantsRandom() {
+        if (!currentUser || !selectedTournament) {
+          return;
+        }
+        setError("");
+        fetch("/tournaments/" + selectedTournament.id + "/fill-participants-random", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": currentUser.id
+          }
+        })
+          .then(function (res) {
+            return res
+              .json()
+              .catch(function () {
+                return {};
+              })
+              .then(function (data) {
+                if (!res.ok) {
+                  var message =
+                    data && data.error
+                      ? data.error
+                      : "Failed to fill participants";
+                  throw new Error(message);
+                }
+                return data;
+              });
+          })
+          .then(function () {
+            refreshParticipants(selectedTournament.id);
+            fetch("/tournaments")
+              .then(function(r){ return r.json(); })
+              .then(setTournaments);
+          })
+          .catch(function (err) {
+            setError(err.message || "Failed to fill participants");
+          });
+      }
+
+      function handleShuffleParticipants() {
+        if (!currentUser || !selectedTournament) {
+          return;
+        }
+        setError("");
+        fetch("/tournaments/" + selectedTournament.id + "/participants/shuffle", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": currentUser.id
+          }
+        })
+          .then(function (res) {
+            if (!res.ok) {
+                return res.json().then(function(data) { throw new Error(data.error || "Failed to shuffle"); });
+            }
+            return res.json();
+          })
+          .then(function () {
+            refreshParticipants(selectedTournament.id);
+          })
+          .catch(function (err) {
+            setError(err.message || "Failed to shuffle participants");
+          });
+      }
+
+      function renderRankings() {
+        return e(
+          "div",
+          { className: "section" },
+          e("h2", { className: "section-title" }, "Player Rankings"),
+          e(
+            "div",
+            { style: { overflowX: "auto" } },
+            e(
+              "table",
+              { style: { width: "100%", borderCollapse: "collapse", fontSize: 14 } },
+              e(
+                "thead",
+                null,
+                e(
+                  "tr",
+                  null,
+                  e("th", { style: { textAlign: "left", padding: 8, borderBottom: "1px solid #ddd" } }, "#"),
+                  e("th", { style: { textAlign: "left", padding: 8, borderBottom: "1px solid #ddd" } }, "Player"),
+                  e("th", { style: { textAlign: "left", padding: 8, borderBottom: "1px solid #ddd" } }, "Level"),
+                  e("th", { style: { textAlign: "center", padding: 8, borderBottom: "1px solid #ddd" } }, "Matches"),
+                  e("th", { style: { textAlign: "center", padding: 8, borderBottom: "1px solid #ddd" } }, "W-D-L"),
+                  e("th", { style: { textAlign: "right", padding: 8, borderBottom: "1px solid #ddd" } }, "Rating")
+                )
+              ),
+              e(
+                "tbody",
+                null,
+                rankingsData.map(function (p, idx) {
+                  return e(
+                    "tr",
+                    { key: p.id },
+                    e("td", { style: { padding: 8, borderBottom: "1px solid #eee" } }, idx + 1),
+                    e("td", { style: { padding: 8, borderBottom: "1px solid #eee" } }, 
+                        (currentUser && currentUser.role === "Organizer") ? 
+                        e("a", { 
+                            href: "#",
+                            onClick: function(ev) { ev.preventDefault(); handleOpenProfile(p); },
+                            style: { color: "#2563eb", textDecoration: "none", fontWeight: "bold", cursor: "pointer" }
+                        }, p.fullName) :
+                        p.fullName
+                    ),
+                    e("td", { style: { padding: 8, borderBottom: "1px solid #eee" } }, p.skillLevel),
+                    e("td", { style: { textAlign: "center", padding: 8, borderBottom: "1px solid #eee" } }, p.matchesPlayed),
+                    e("td", { style: { textAlign: "center", padding: 8, borderBottom: "1px solid #eee" } }, p.won + "-" + p.draw + "-" + p.lost),
+                    e("td", { style: { textAlign: "right", padding: 8, borderBottom: "1px solid #eee", fontWeight: "bold" } }, p.rating)
+                  );
+                })
+              )
+            )
+          )
+        );
+      }
+
+      function renderAuth() {
+        return e(
+          "div",
+          { className: "app" },
+          e(
+            "div",
+            { className: "app-header" },
+            e("span", null, "Pickleball"),
+            loading
+              ? e("span", { className: "small" }, "Loading")
+              : e("span", { className: "small" }, "Please sign in")
+          ),
+          e(
+            "div",
+            { className: "app-content" },
+            error &&
+              e(
+                "div",
+                { className: "error" },
+                error
+              ),
+            e(
+              "div",
+              { className: "section" },
+              e(
+                "div",
+                { style: { display: "flex", marginBottom: 8 } },
+                e(
+                  "button",
+                  {
+                    type: "button",
+                    style: {
+                      flex: 1,
+                      padding: 8,
+                      borderRadius: 6,
+                      border:
+                        authMode === "login"
+                          ? "2px solid #111827"
+                          : "1px solid #d1d5db",
+                      background:
+                        authMode === "login" ? "#111827" : "#ffffff",
+                      color: authMode === "login" ? "#f9fafb" : "#111827",
+                      marginRight: 4
+                    },
+                    onClick: function () {
+                      setAuthMode("login");
+                    }
+                  },
+                  "Login"
+                ),
+                e(
+                  "button",
+                  {
+                    type: "button",
+                    style: {
+                      flex: 1,
+                      padding: 8,
+                      borderRadius: 6,
+                      border:
+                        authMode === "signup"
+                          ? "2px solid #111827"
+                          : "1px solid #d1d5db",
+                      background:
+                        authMode === "signup" ? "#111827" : "#ffffff",
+                      color: authMode === "signup" ? "#f9fafb" : "#111827",
+                      marginLeft: 4
+                    },
+                    onClick: function () {
+                      setAuthMode("signup");
+                    }
+                  },
+                  "Sign up"
+                )
+              ),
+              authMode === "login" &&
+                e(
+                  "form",
+                  { onSubmit: handleLogin },
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e(
+                      "label",
+                      { className: "small" },
+                      "Email"
+                    ),
+                    e("input", {
+                      type: "email",
+                      required: true,
+                      value: authEmail,
+                      onChange: function (ev) {
+                        setAuthEmail(ev.target.value);
+                      },
+                      style: {
+                        width: "100%",
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        boxSizing: "border-box"
+                      }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e(
+                      "label",
+                      { className: "small" },
+                      "Password"
+                    ),
+                    e("input", {
+                      type: "password",
+                      required: true,
+                      value: authPassword,
+                      onChange: function (ev) {
+                        setAuthPassword(ev.target.value);
+                      },
+                      style: {
+                        width: "100%",
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        boxSizing: "border-box"
+                      }
+                    })
+                  ),
+
+
+
+
+
+
+                  e(
+                    "button",
+                    {
+                      type: "submit",
+                      disabled: loading,
+                      style: {
+                        width: "100%",
+                        padding: 10,
+                        borderRadius: 6,
+                        border: "none",
+                        background: "#111827",
+                        color: "#f9fafb",
+                        fontWeight: 600
+                      }
+                    },
+                    loading ? "Signing in..." : "Login"
+                  ),
+                  e(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: handleUseDemoAdmin,
+                      style: {
+                        width: "100%",
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "none",
+                        background: "transparent",
+                        color: "#111827",
+                        fontSize: 12,
+                        marginTop: 4
+                      }
+                    },
+                    "Use demo admin"
+                  )
+                ),
+              authMode === "signup" &&
+                e(
+                  "form",
+                  { onSubmit: handleSignup },
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e(
+                      "label",
+                      { className: "small" },
+                      "Full name"
+                    ),
+                    e("input", {
+                      type: "text",
+                      required: true,
+                      value: authFullName,
+                      onChange: function (ev) {
+                        setAuthFullName(ev.target.value);
+                      },
+                      style: {
+                        width: "100%",
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        boxSizing: "border-box"
+                      }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e(
+                      "label",
+                      { className: "small" },
+                      "Email"
+                    ),
+                    e("input", {
+                      type: "email",
+                      required: true,
+                      value: authEmail,
+                      onChange: function (ev) {
+                        setAuthEmail(ev.target.value);
+                      },
+                      style: {
+                        width: "100%",
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        boxSizing: "border-box"
+                      }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e(
+                      "label",
+                      { className: "small" },
+                      "Password"
+                    ),
+                    e("input", {
+                      type: "password",
+                      required: true,
+                      value: authPassword,
+                      onChange: function (ev) {
+                        setAuthPassword(ev.target.value);
+                      },
+                      style: {
+                        width: "100%",
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        boxSizing: "border-box"
+                      }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "City"),
+                    e("input", {
+                      type: "text",
+                      value: authCity,
+                      onChange: function(ev) { setAuthCity(ev.target.value); },
+                      style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Country"),
+                    e("input", {
+                      type: "text",
+                      value: authCountry,
+                      onChange: function(ev) { setAuthCountry(ev.target.value); },
+                      style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Skill Level"),
+                    e("select", {
+                        value: authSkillLevel,
+                        onChange: function(ev) { setAuthSkillLevel(ev.target.value); },
+                        style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                    },
+                        e("option", { value: "Beginner" }, "Beginner"),
+                        e("option", { value: "Intermediate" }, "Intermediate"),
+                        e("option", { value: "Advanced" }, "Advanced"),
+                        e("option", { value: "Pro" }, "Pro"),
+                        e("option", { value: "Unknown" }, "Unknown")
+                    )
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Notification Preference"),
+                    e("select", {
+                        value: authNotification,
+                      onChange: function(ev) { setAuthNotification(ev.target.value); },
+                        style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                    },
+                        e("option", { value: "None" }, "None"),
+                        e("option", { value: "Email" }, "Email"),
+                        e("option", { value: "WhatsApp" }, "WhatsApp")
+                    )
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Phone" + (authNotification === "WhatsApp" ? " *" : "")),
+                    e("input", {
+                      type: "tel",
+                      required: authNotification === "WhatsApp",
+                      value: authPhone,
+                      placeholder: "Required for WhatsApp",
+                      onChange: function(ev) { setAuthPhone(ev.target.value); },
+                      style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Recent Matches Count (to display)"),
+                    e("input", {
+                        type: "number",
+                        min: 1,
+                        max: 20,
+                        value: authMatchesCount,
+                        onChange: function(ev) { setAuthMatchesCount(ev.target.value); },
+                        style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                    })
+                  ),
+                  e(
+                    "button",
+                    {
+                      type: "submit",
+                      disabled: loading,
+                      style: {
+                        width: "100%",
+                        padding: 10,
+                        borderRadius: 6,
+                        border: "none",
+                        background: "#111827",
+                        color: "#f9fafb",
+                        fontWeight: 600
+                      }
+                    },
+                    loading ? "Signing up..." : "Create account"
+                  )
+                )
+            )
+          )
+        );
+      }
+
+      var TOURNAMENT_FORMATS = [
+        "Round Robin",
+        "Single Elimination",
+        "Double Elimination",
+        "Pool Play",
+        "Ladder",
+        "Waterfall"
+      ];
+
+      function handleDeleteUser(targetUser) {
+          if (!confirm("Are you sure you want to delete user " + (targetUser.fullName || targetUser.email) + "? This cannot be undone.")) return;
+          
+          fetch("/users/" + targetUser.id, {
+              method: "DELETE",
+              headers: { "x-user-id": currentUser.id }
+          })
+          .then(function(res) {
+              if (res.status === 400) {
+                   return res.json().then(function(data) {
+                       var msg = "User cannot be deleted because they are active in the following tournaments:\n";
+                       if (data.activeTournaments) {
+                           msg += data.activeTournaments.map(function(t) { return "- " + t.name; }).join("\n");
+                       }
+                       alert(msg);
+                       throw new Error("Active in tournaments");
+                   });
+              }
+              if (!res.ok) throw new Error("Failed to delete user");
+              return res.json();
+          })
+          .then(function() {
+              alert("User deleted successfully");
+              if (targetUser.id === currentUser.id) {
+                  setCurrentUser(null);
+                  setAuthMode("login");
+                  setView("home");
+                  try { window.localStorage.removeItem("currentUser"); } catch(e) {}
+              } else {
+                  setUsers(users.filter(function(u) { return u.id !== targetUser.id; }));
+                  loadRankings(); // Refresh rankings data immediately after deletion
+                  setView("rankings"); 
+              }
+          })
+          .catch(function(e) {
+              if (e.message !== "Active in tournaments") setError(e.message);
+          });
+      }
+
+      function renderProfile() {
+          if (!profileUser) return e("div", null, "No user selected");
+          
+          var isSelf = currentUser && currentUser.id === profileUser.id;
+          var isAdmin = currentUser && currentUser.role === "Organizer";
+          var canEdit = isSelf || isAdmin;
+          
+          return e("div", null,
+             e("div", { className: "section" },
+                 e("div", { style: { display: "flex", alignItems: "center", marginBottom: 16 } },
+                    e("button", { 
+                        onClick: function() { setView(isSelf ? "home" : "rankings"); }, // simplistic back nav
+                        style: { marginRight: 16, border: "none", background: "none", cursor: "pointer", fontSize: 20 }
+                    }, "←"),
+                    e("h2", { className: "section-title", style: { margin: 0 } }, "Edit Profile")
+                 ),
+                 e("form", { onSubmit: handleSaveProfile },
+                    e("div", { style: { marginBottom: 16 } },
+                       e("label", { className: "small" }, "Full Name"),
+                       e("input", {
+                           type: "text",
+                           value: editProfileName,
+                           onChange: function(e) { setEditProfileName(e.target.value); },
+                           disabled: !canEdit,
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                       })
+                    ),
+                    e("div", { style: { marginBottom: 16 } },
+                       e("label", { className: "small" }, "City"),
+                       e("input", {
+                           type: "text",
+                           value: editProfileCity,
+                           onChange: function(e) { setEditProfileCity(e.target.value); },
+                           disabled: !canEdit,
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                       })
+                    ),
+                    e("div", { style: { marginBottom: 16 } },
+                       e("label", { className: "small" }, "Country"),
+                       e("input", {
+                           type: "text",
+                           value: editProfileCountry,
+                           onChange: function(e) { setEditProfileCountry(e.target.value); },
+                           disabled: !canEdit,
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                       })
+                    ),
+                    e("div", { style: { marginBottom: 16 } },
+                       e("label", { className: "small" }, "Skill Level"),
+                       e("select", {
+                           value: editProfileSkillLevel,
+                           onChange: function(e) { setEditProfileSkillLevel(e.target.value); },
+                           disabled: !canEdit,
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                       },
+                           e("option", { value: "Beginner" }, "Beginner"),
+                           e("option", { value: "Intermediate" }, "Intermediate"),
+                           e("option", { value: "Advanced" }, "Advanced"),
+                           e("option", { value: "Pro" }, "Pro"),
+                           e("option", { value: "Unknown" }, "Unknown")
+                       )
+                    ),
+                    e("div", { style: { marginBottom: 16 } },
+                       e("label", { className: "small" }, "Email (Read-only)"),
+                       e("input", {
+                           type: "text",
+                           value: profileUser.email,
+                           disabled: true,
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #e5e7eb", background: "#f3f4f6" }
+                       })
+                    ),
+                    e("div", { style: { marginBottom: 16 } },
+                       e("label", { className: "small" }, "Notification Preference"),
+                       e("select", {
+                           value: editProfileNotification,
+                           onChange: function(e) { setEditProfileNotification(e.target.value); },
+                           disabled: !canEdit,
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                       },
+                           e("option", { value: "None" }, "None"),
+                           e("option", { value: "Email" }, "Email"),
+                           e("option", { value: "WhatsApp" }, "WhatsApp")
+                       )
+                    ),
+                    e("div", { style: { marginBottom: 16 } },
+                       e("label", { className: "small" }, "Phone" + (editProfileNotification === "WhatsApp" ? " *" : "")),
+                       e("input", {
+                           type: "tel",
+                           value: editProfilePhone,
+                           onChange: function(e) { setEditProfilePhone(e.target.value); },
+                           disabled: !canEdit,
+                           required: editProfileNotification === "WhatsApp",
+                           placeholder: "Required for WhatsApp",
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                       })
+                    ),
+                    e("div", { style: { marginBottom: 16 } },
+                       e("label", { className: "small" }, "Recent Matches Count (to display)"),
+                       e("input", {
+                           type: "number",
+                           min: 1,
+                           max: 20,
+                           value: editProfileMatchesCount,
+                           onChange: function(e) { setEditProfileMatchesCount(e.target.value); },
+                           disabled: !canEdit,
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                       })
+                    ),
+                    e("div", { style: { marginBottom: 16 } },
+                       e("label", { className: "small" }, "Role"),
+                       e("select", {
+                           value: editProfileRole,
+                           onChange: function(e) { setEditProfileRole(e.target.value); },
+                           disabled: !isAdmin, // Only admin can change role
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", background: isAdmin ? "white" : "#f3f4f6" }
+                       },
+                           e("option", { value: "Player" }, "Player"),
+                           e("option", { value: "Organizer" }, "Organizer")
+                       ),
+                       !isAdmin && e("div", { className: "small", style: { marginTop: 4, color: "#6b7280" } }, "Only Organizers can change roles.")
+                    ),
+                    e("div", { style: { display: "flex", gap: 16, alignItems: "center" } },
+                       canEdit && e("button", {
+                           type: "submit",
+                           disabled: saving,
+                           style: { padding: "10px 20px", background: "#111827", color: "white", borderRadius: 6, border: "none", cursor: "pointer" }
+                       }, saving ? "Saving..." : "Save Changes"),
+                       (isSelf || (isAdmin && !isSelf && profileUser.role !== "Organizer")) && e("button", {
+                           type: "button",
+                           onClick: function() { handleDeleteUser(profileUser); },
+                           style: { padding: "10px 20px", background: "#ef4444", color: "white", borderRadius: 6, border: "none", cursor: "pointer" }
+                       }, isSelf ? "Delete My Account" : "Delete User")
+                    )
+                 )
+             ),
+             (isAdmin && isSelf) &&
+                e(
+                  "div",
+                  { className: "section" },
+                  e("h2", { className: "section-title" }, "Players"),
+                  users
+                    .filter(function (u) {
+                      return u.id !== currentUser.id;
+                    })
+                    .map(function (u) {
+                      return e(
+                        "div",
+                        {
+                          key: u.id,
+                          className: "item",
+                          style: {
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center"
+                          }
+                        },
+                        e(
+                          "div",
+                          null,
+                          e("div", null, u.fullName || u.email),
+                          e(
+                            "div",
+                            { className: "small" },
+                            u.role
+                          )
+                        ),
+                        u.role !== "Organizer" ?
+                          e(
+                            "button",
+                            {
+                              type: "button",
+                              onClick: function () {
+                                handleMakeOrganizer(u);
+                              },
+                              style: {
+                                padding: 6,
+                                borderRadius: 6,
+                                border: "1px solid #d1d5db",
+                                background: "#ffffff",
+                                fontSize: 12
+                              }
+                            },
+                            "Make organizer"
+                          ) :
+                          e(
+                            "button",
+                            {
+                              type: "button",
+                              onClick: function () {
+                                handleRevokeOrganizer(u);
+                              },
+                              style: {
+                                padding: 6,
+                                borderRadius: 6,
+                                border: "1px solid #d1d5db",
+                                background: "#ffffff",
+                                color: "#b91c1c",
+                                fontSize: 12
+                              }
+                            },
+                            "Revoke organizer"
+                          )
+                      );
+                    })
+                )
+          );
+      }
+
+      function renderHome() {
+        var now = new Date();
+        var filteredTournaments = tournaments.filter(function(t) {
+          if (homeFilter === "all") return true;
+          if (t.status === "Completed") return false;
+          if (!t.startDate) return false;
+          return new Date(t.startDate) > now;
+        });
+
+        var myTournaments = myTournamentsData;
+
+        return e(
+          "div",
+          null,
+          myTournaments.length > 0 && e(
+            "div",
+            { className: "section" },
+            e("h2", { className: "section-title" }, "My Tournaments"),
+            myTournaments.map(function(t) {
+               return e(
+                "div",
+                {
+                  key: t.id,
+                  className: "card",
+                  onClick: function () {
+                    handleTournamentClick(t);
+                  },
+                  style: { cursor: "pointer" }
+                },
+                e(
+                  "div",
+                  { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" } },
+                  e("strong", null, t.name),
+                  t.myStatus === "waitlist" 
+                    ? e("span", { 
+                        style: { 
+                           background: "#fff7ed", color: "#c2410c", 
+                           padding: "2px 6px", borderRadius: 4, fontSize: 10,
+                           border: "1px solid #fdba74" 
+                        } 
+                      }, "Waitlist \u23F3")
+                    : e("span", { className: "badge badge-status" }, "Joined")
+                ),
+                e("div", { className: "small" }, "Format: " + (t.format || "Round Robin") + ((t.format && t.format !== "Round Robin" && t.format !== "Waterfall") ? " (now Round Robin only)" : "")),
+                e(
+                  "div",
+                  { className: "small" },
+                  t.location
+                    ? t.location.name + " \u2022 " + t.location.city
+                    : ""
+                ),
+                e(
+                   "div",
+                   { className: "small" },
+                   "Start: " + formatDate(t.startDate)
+                )
+              );
+            })
+          ),
+          myTournaments.length > 0 && e(
+            "div",
+            { className: "section" },
+            e("h2", { className: "section-title" }, "My Matches"),
+            myMatches.length === 0 
+                ? e("div", { className: "small" }, "No matches scheduled yet.")
+                : e("div", { className: "list" },
+                    myMatches.slice().reverse().slice(0, currentUser.recentMatchesCount || 5).map(function(m) {
+                        var isMeP1 = m.player1Id === currentUser.id;
+                        var opponentName = isMeP1 ? m.player2Name : m.player1Name;
+                        var myScore = isMeP1 ? m.score1 : m.score2;
+                        var opScore = isMeP1 ? m.score2 : m.score1;
+                        
+                        var resultString = "Scheduled";
+                        var scoreString = "vs " + opponentName;
+                        
+                        if (m.status === "completed") {
+                            scoreString = (myScore || 0) + " - " + (opScore || 0) + " vs " + opponentName;
+                            if (Number(myScore) > Number(opScore)) resultString = "Won \uD83C\uDFC6";
+                            else if (Number(myScore) < Number(opScore)) resultString = "Lost";
+                            else resultString = "Draw";
+                        }
+                        
+                        return e("div", { key: m.id, className: "card" },
+                            e("div", { className: "small", style: { color: "#6b7280", marginBottom: 4 } }, m.tournamentName),
+                            e("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+                                e("strong", null, scoreString),
+                                e("span", { className: "badge" }, resultString)
+                            )
+                        );
+                    })
+                )
+          ),
+          e(
+            "div",
+            { className: "section" },
+            e(
+              "div",
+              { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } },
+              e("h2", { className: "section-title", style: { marginBottom: 0 } }, "Upcoming Tournaments"),
+              e(
+                "div",
+                { style: { display: "flex", gap: 4, background: "#e5e7eb", padding: 2, borderRadius: 6 } },
+                e(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: function() { setHomeFilter("active"); },
+                    style: {
+                      padding: "4px 8px",
+                      borderRadius: 4,
+                      border: "none",
+                      background: homeFilter === "active" ? "#ffffff" : "transparent",
+                      color: homeFilter === "active" ? "#111827" : "#6b7280",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: "pointer"
+                    }
+                  },
+                  "Active"
+                ),
+                e(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: function() { setHomeFilter("all"); },
+                    style: {
+                      padding: "4px 8px",
+                      borderRadius: 4,
+                      border: "none",
+                      background: homeFilter === "all" ? "#ffffff" : "transparent",
+                      color: homeFilter === "all" ? "#111827" : "#6b7280",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: "pointer"
+                    }
+                  },
+                  "All"
+                )
+              )
+            ),
+            filteredTournaments.length === 0 && e("div", { className: "small" }, "No tournaments found"),
+            filteredTournaments.map(function(t) {
+               var isJoined = myTournaments.some(function(mt) { return mt.id === t.id; });
+               return e(
+                "div",
+                {
+                  key: t.id,
+                  className: "card",
+                  onClick: function () {
+                    handleTournamentClick(t);
+                  },
+                  style: { cursor: "pointer", border: isJoined ? "1px solid #10b981" : undefined }
+                },
+                e(
+                  "div",
+                  { style: { display: "flex", justifyContent: "space-between" } },
+                  e("strong", null, t.name),
+                  e("div", { style: { display: "flex", gap: 4 } },
+                      isJoined && e("span", { className: "badge", style: { background: "#d1fae5", color: "#065f46" } }, "Joined"),
+                      e("span", { className: "badge badge-status" }, t.status)
+                  )
+                ),
+                e("div", { className: "small" }, "Format: " + (t.format || "Round Robin") + ((t.format && t.format !== "Round Robin" && t.format !== "Waterfall") ? " (now Round Robin only)" : "")),
+                e(
+                  "div",
+                  { className: "small" },
+                  t.location
+                    ? t.location.name +
+                        " \u2022 " +
+                        t.location.city +
+                        ", " +
+                        t.location.country
+                    : ""
+                ),
+                e(
+                   "div",
+                   { className: "small" },
+                   "Start: " + formatDate(t.startDate)
+                ),
+                e(
+                   "div",
+                   { className: "small", style: { marginTop: 4 } },
+                   e("span", null, "Players: " + (t.registeredCount || 0)),
+                   (t.waitlistCount > 0) && e("span", { style: { marginLeft: 8, color: "#b45309" } }, "Waitlist: " + t.waitlistCount)
+                )
+              );
+            })
+          ),
+          e(
+            "div",
+            { className: "section" },
+            e("h2", { className: "section-title" }, "Players summary"),
+            e(
+              "div",
+              { className: "small" },
+              users.length,
+              " registered players"
+            )
+          )
+        );
+      }
+
+      function renderTournaments() {
+        return e(
+          "div",
+          { className: "section" },
+          e(
+            "div",
+            {
+              style: {
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 8
+              }
+            },
+            e("h2", { className: "section-title" }, "Tournaments"),
+            currentUser &&
+              currentUser.role === "Organizer" &&
+              e(
+                "button",
+                {
+                  type: "button",
+                  onClick: handleCreateTournamentClick,
+                  style: {
+                    padding: 6,
+                    borderRadius: 6,
+                    border: "1px solid #d1d5db",
+                    background: "#ffffff",
+                    fontSize: 12
+                  }
+                },
+                "Create"
+              )
+          ),
+          tournaments.length === 0 &&
+            e("div", { className: "small" }, "No tournaments"),
+          tournaments.map(function (t) {
+            return e(
+              "div",
+              {
+                key: t.id,
+                className: "item",
+                onClick: function () {
+                  handleTournamentClick(t);
+                },
+                style: { cursor: "pointer" }
+              },
+              e(
+                "div",
+                null,
+                e("strong", null, t.name),
+                e(
+                  "span",
+                  { className: "badge badge-status" },
+                  t.status
+                )
+              ),
+              e(
+                 "div",
+                 { className: "small" },
+                 "Format: " + (t.format || "Round Robin") + ((t.format && t.format !== "Round Robin" && t.format !== "Waterfall") ? " (now Round Robin only)" : "")
+              ),
+              e(
+                "div",
+                { className: "small" },
+                t.location
+                  ? t.location.name +
+                      " \u2022 " +
+                      t.location.city +
+                      ", " +
+                      t.location.country
+                  : ""
+              ),
+              e(
+                "div",
+                { className: "small" },
+                "Courts: ",
+                t.courtsCount
+              ),
+              e(
+                 "div",
+                 { className: "small", style: { marginTop: 4 } },
+                 e("span", null, "Players: " + (t.registeredCount || 0)),
+                 (t.waitlistCount > 0) && e("span", { style: { marginLeft: 8, color: "#b45309" } }, "Waitlist: " + t.waitlistCount)
+              )
+            );
+          })
+        );
+      }
+
+
+
+      function renderCreateTournamentScreen() {
+        return e(
+          "div",
+          { className: "section" },
+          e(
+            "button",
+            {
+              type: "button",
+              onClick: function () {
+                setView("tournaments");
+              },
+              style: {
+                marginBottom: 8,
+                padding: 6,
+                borderRadius: 6,
+                border: "1px solid #d1d5db",
+                background: "#ffffff",
+                fontSize: 12
+              }
+            },
+            "\u2190 Back"
+          ),
+          e("h2", { className: "section-title" }, "Create tournament"),
+          e(
+            "form",
+            { onSubmit: handleCreateTournament },
+            e(
+              "div",
+              { style: { marginBottom: 8 } },
+              e("label", { className: "small" }, "Name"),
+              e("input", {
+                type: "text",
+                required: true,
+                value: ctName,
+                onChange: function (ev) {
+                  setCtName(ev.target.value);
+                },
+                style: {
+                  width: "100%",
+                  padding: 8,
+                  borderRadius: 6,
+                  border: "1px solid #d1d5db",
+                  boxSizing: "border-box"
+                }
+              })
+            ),
+            e(
+              "div",
+              { style: { marginBottom: 8 } },
+              e("label", { className: "small" }, "Description"),
+              e("textarea", {
+                value: ctDescription,
+                onChange: function (ev) {
+                  setCtDescription(ev.target.value);
+                },
+                rows: 3,
+                style: {
+                  width: "100%",
+                  padding: 8,
+                  borderRadius: 6,
+                  border: "1px solid #d1d5db",
+                  boxSizing: "border-box",
+                  resize: "vertical"
+                }
+              })
+            ),
+            e(
+                "div",
+                { style: { marginBottom: 8 } },
+                e("label", { className: "small" }, "Type"),
+                e("select", {
+                   value: ctType,
+                   onChange: function(ev) { setCtType(ev.target.value); },
+                   style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                },
+                   e("option", { value: "Singles" }, "Singles"),
+                   e("option", { value: "Doubles" }, "Doubles (Pairs)")
+                )
+              ),
+            e(
+                "div",
+                { style: { marginBottom: 8 } },
+                e("label", { className: "small" }, "Format"),
+                e("select", {
+                   value: ctFormat,
+                   onChange: function(ev) { 
+                       var val = ev.target.value;
+                       setCtFormat(val);
+                       var modes = FORMAT_MODES[val] || [];
+                       if (modes.length > 0) setCtSchedulingMode(modes[0].value);
+                   },
+                   style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                },
+                   tournamentFormats.map(function(f) {
+                      return e("option", { key: f, value: f }, f);
+                   })
+                )
+              ),
+            e(
+                "div",
+                { style: { marginBottom: 8 } },
+                e("label", { className: "small" }, "Scheduling Mode"),
+                e("select", {
+                   value: ctSchedulingMode,
+                   onChange: function(ev) { setCtSchedulingMode(ev.target.value); },
+                   style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                },
+                   (FORMAT_MODES[ctFormat] || []).map(function(m) {
+                       return e("option", { key: m.value, value: m.value }, m.label);
+                   })
+                )
+              ),
+              e(
+                "div",
+                { style: { marginBottom: 8 } },
+                e("label", { className: "small" }, "Location name"),
+              e("input", {
+                type: "text",
+                value: ctLocationName,
+                onChange: function (ev) {
+                  setCtLocationName(ev.target.value);
+                },
+                style: {
+                  width: "100%",
+                  padding: 8,
+                  borderRadius: 6,
+                  border: "1px solid #d1d5db",
+                  boxSizing: "border-box"
+                }
+              })
+            ),
+            e(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  gap: 8,
+                  marginBottom: 8
+                }
+              },
+              e(
+                "div",
+                { style: { flex: 1 } },
+                e("label", { className: "small" }, "City"),
+                e("input", {
+                  type: "text",
+                  value: ctCity,
+                  onChange: function (ev) {
+                    setCtCity(ev.target.value);
+                  },
+                  style: {
+                    width: "100%",
+                    padding: 8,
+                    borderRadius: 6,
+                    border: "1px solid #d1d5db",
+                    boxSizing: "border-box"
+                  }
+                })
+              ),
+              e(
+                "div",
+                { style: { flex: 1 } },
+                e("label", { className: "small" }, "Country"),
+                e("input", {
+                  type: "text",
+                  value: ctCountry,
+                  onChange: function (ev) {
+                    setCtCountry(ev.target.value);
+                  },
+                  style: {
+                    width: "100%",
+                    padding: 8,
+                    borderRadius: 6,
+                    border: "1px solid #d1d5db",
+                    boxSizing: "border-box"
+                  }
+                })
+              )
+            ),
+            e(
+              "div",
+              { style: { marginBottom: 8 } },
+              e("label", { className: "small" }, "Courts count"),
+              e("input", {
+                type: "number",
+                min: 0,
+                value: ctCourtsCount,
+                onChange: function (ev) {
+                  setCtCourtsCount(ev.target.value);
+                },
+                style: {
+                  width: "100%",
+                  padding: 8,
+                  borderRadius: 6,
+                  border: "1px solid #d1d5db",
+                  boxSizing: "border-box"
+                }
+              })
+            ),
+            e(
+              "div",
+              { style: { marginBottom: 8 } },
+              e("label", { className: "small" }, "Start date and time"),
+              e(DateTimeInput, {
+                value: ctStartDate,
+                onChange: function (newDate) {
+                  setCtStartDate(newDate);
+                  
+                  // Auto-update name with new date suffix
+                  if (newDate && ctName) {
+                      var d = new Date(newDate);
+                      if (isNaN(d.getTime())) return;
+                      var day = ("0" + d.getDate()).slice(-2);
+                      var month = ("0" + (d.getMonth() + 1)).slice(-2);
+                      var year = d.getFullYear().toString().slice(-2);
+                      var suffix = " " + day + "-" + month + "-" + year;
+                      
+                      var datePattern = /\s\d{2}-\d{2}-\d{2}$/;
+                      if (datePattern.test(ctName)) {
+                          setCtName(ctName.replace(datePattern, suffix));
+                      } else {
+                          setCtName(ctName + suffix);
+                      }
+                  }
+                }
+              })
+            ),
+            e(
+              "div",
+              { style: { marginBottom: 8 } },
+              e(
+                "label",
+                { className: "small" },
+                "Duration (minutes)"
+              ),
+              e("input", {
+                type: "number",
+                min: 0,
+                value: ctDurationMinutes,
+                onChange: function (ev) {
+                  setCtDurationMinutes(ev.target.value);
+                },
+                style: {
+                  width: "100%",
+                  padding: 8,
+                  borderRadius: 6,
+                  border: "1px solid " + "#d1d5db",
+                  boxSizing: "border-box"
+                }
+              })
+            ),
+            e(
+              "div",
+              { style: { marginBottom: 8 } },
+              e("label", { className: "small" }, "Max participants (0 = no limit)"),
+              e("input", {
+                type: "number",
+                min: 0,
+                value: ctMaxParticipants,
+                onChange: function (ev) {
+                  setCtMaxParticipants(ev.target.value);
+                },
+                style: {
+                  width: "100%",
+                  padding: 8,
+                  borderRadius: 6,
+                  border: "1px solid #d1d5db",
+                  boxSizing: "border-box"
+                }
+              })
+            ),
+            e(
+              "div",
+              { style: { marginBottom: 8, display: "flex", gap: 8 } },
+              e("div", { style: { flex: 1 } },
+                e("label", { className: "small" }, "Round Duration (min)"),
+                e("input", {
+                  type: "number",
+                  min: 1,
+                  value: ctRoundDurationMinutes,
+                  onChange: function (ev) { setCtRoundDurationMinutes(ev.target.value); },
+                  style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                })
+              ),
+              e("div", { style: { flex: 1 } },
+                e("label", { className: "small" }, "Break Time (min)"),
+                e("input", {
+                  type: "number",
+                  min: 0,
+                  value: ctBreakTimeMinutes,
+                  onChange: function (ev) { setCtBreakTimeMinutes(ev.target.value); },
+                  style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                })
+              )
+            ),
+            e(
+              "div",
+              { style: { marginBottom: 8 } },
+              e("label", { className: "small" }, "Number of Rounds (Calculated Max)"),
+              e("input", {
+                type: "number",
+                min: 1,
+                value: ctRoundsCount,
+                placeholder: "Auto-calculated",
+                onChange: function (ev) { 
+                    var val = Number(ev.target.value);
+                    var dur = Number(ctDurationMinutes);
+                    var roundDur = Number(ctRoundDurationMinutes);
+                    var breakTime = Number(ctBreakTimeMinutes) || 0;
+                    var max = 100;
+                    if (dur && roundDur && (roundDur + breakTime > 0)) {
+                        max = Math.floor((dur + breakTime) / (roundDur + breakTime));
+                    }
+                    
+                    if (val <= max) {
+                        setCtRoundsCount(ev.target.value); 
+                    }
+                },
+                style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+              })
+            ),
+            e(
+              "button",
+              {
+                type: "submit",
+                disabled: ctSaving,
+                style: {
+                  width: "100%",
+                  padding: 10,
+                  borderRadius: 6,
+                  border: "none",
+                  background: "#111827",
+                  color: "#f9fafb",
+                  fontWeight: 600
+                }
+              },
+              ctSaving ? "Creating..." : "Create"
+            )
+          )
+        );
+      }
+
+      function renderMatchesSection(organizerCanEdit) {
+        if (!selectedTournament) return null;
+        
+        var isCompleted = selectedTournament.status === "Completed";
+        // Organizer permissions
+        var isOrganizer = currentUser && currentUser.role === "Organizer" && selectedTournament.createdBy === currentUser.id;
+        
+        // Simple Standings Calculation (Round Robin)
+        // Map userId -> { played, won, lost, points, pointsFor, pointsAgainst, pointDiff }
+        var standings = {};
+        participantsConfirmed.forEach(function(p) {
+           standings[p.id] = { id: p.id, name: p.fullName || p.email, played: 0, won: 0, lost: 0, points: 0, pointsFor: 0, pointsAgainst: 0, pointDiff: 0 };
+        });
+        
+        matches.forEach(function(m) {
+            if (m.status === "completed") {
+              if (standings[m.player1Id]) standings[m.player1Id].played++;
+              if (standings[m.player2Id]) standings[m.player2Id].played++;
+              if (standings[m.partner1Id]) standings[m.partner1Id].played++;
+              if (standings[m.partner2Id]) standings[m.partner2Id].played++;
+              
+              var s1 = Number(m.score1);
+              var s2 = Number(m.score2);
+              
+              var updateStats = function(pid, forPts, againstPts, won) {
+                 if (standings[pid]) {
+                    standings[pid].pointsFor += forPts;
+                    standings[pid].pointsAgainst += againstPts;
+                    standings[pid].pointDiff += (forPts - againstPts);
+                    if (won) {
+                        standings[pid].won++;
+                        standings[pid].points += 1;
+                    } else {
+                        standings[pid].lost++;
+                    }
+                 }
+              };
+
+              var p1Won = s1 > s2;
+              updateStats(m.player1Id, s1, s2, p1Won);
+              updateStats(m.partner1Id, s1, s2, p1Won);
+              updateStats(m.player2Id, s2, s1, !p1Won);
+              updateStats(m.partner2Id, s2, s1, !p1Won);
+            }
+         });
+        
+        var sortedStandings = Object.values(standings).sort(function(a,b) { 
+             if (b.points !== a.points) return b.points - a.points;
+             if (b.pointDiff !== a.pointDiff) return b.pointDiff - a.pointDiff;
+             return b.pointsFor - a.pointsFor;
+        });
+
+        function handleUpdateScore(match, updates) {
+           fetch("/matches/" + match.id, {
+             method: "PATCH",
+             headers: { "Content-Type": "application/json", "x-user-id": currentUser.id },
+             body: JSON.stringify(updates)
+           })
+           .then(function(r) { return r.json(); })
+             .then(function() { 
+                 refreshMatches(selectedTournament.id); 
+                 fetch("/tournaments").then(function(r){return r.json()}).then(function(data){
+                     setTournaments(data);
+                     var updated = data.find(function(t){ return t.id === selectedTournament.id; });
+                     if(updated) setSelectedTournament(updated);
+                 });
+             })
+             .catch(function(e) { console.error(e); alert("Failed to save score: " + e.message); });
+        }
+
+        // Helper for Shuffle View
+        function renderMatchItem(m, isExpanded) {
+           var p1Display = m.partner1Name ? (m.player1Name + " & " + m.partner1Name) : m.player1Name;
+           var p2Display = m.partner2Name ? (m.player2Name + " & " + m.partner2Name) : m.player2Name;
+           
+           // Permissions logic
+          var isCompleted = m.status === "completed";
+          var curId = currentUser ? String(currentUser.id) : "";
+          var amIP1 = curId === String(m.player1Id);
+          var amIPt1 = curId === String(m.partner1Id);
+          var amIP2 = curId === String(m.player2Id);
+          var amIPt2 = curId === String(m.partner2Id);
+          var isParticipant = amIP1 || amIPt1 || amIP2 || amIPt2;
+          
+          var myTeam = (amIP1 || amIPt1) ? 1 : 2;
+           
+           var pendingS1 = m.pendingScore1;
+           var pendingS2 = m.pendingScore2;
+           var hasPending = pendingS1 != null && pendingS2 != null;
+           
+           var canInteract = isExpanded && !isCompleted && (organizerCanEdit || isParticipant);
+           
+           // Compact View
+           if (!isExpanded) {
+               var scoreText = (m.status === "completed") ? (m.score1 + " - " + m.score2) : "vs";
+               return e("div", { className: "match-item compact", style: { display: "flex", justifyContent: "space-between", padding: 4, borderBottom: "1px solid #eee", fontSize: "0.9em" } },
+                   e("div", { style: { flex: 1 } }, p1Display),
+                   e("div", { style: { fontWeight: "bold", padding: "0 8px" } }, scoreText),
+                   e("div", { style: { flex: 1, textAlign: "right" } }, p2Display)
+               );
+           }
+           
+           // Expanded View (Full Controls)
+           return e("div", { className: "match-item expanded", style: { padding: 8, background: "#fff", borderRadius: 4, marginBottom: 8, border: "1px solid #ddd" } },
+               // Players
+               e("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: "0.95em" } },
+                   e("div", { style: { fontWeight: isParticipant && myTeam===1 ? "bold" : "normal" } }, p1Display),
+                   e("div", { style: { fontWeight: isParticipant && myTeam===2 ? "bold" : "normal" } }, p2Display)
+               ),
+               
+               // Controls
+               (function() {
+                   if (m.status === "completed") {
+                       return e("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } },
+                           e("span", { style: { fontWeight: "bold", fontSize: "1.2em" } }, m.score1 + " - " + m.score2),
+                           organizerCanEdit && e("button", {
+                               onClick: function() { 
+                                  handleUpdateScore(m, { score1: null, score2: null, pendingScore1: null, pendingScore2: null }); 
+                               },
+                               style: { fontSize: 10, padding: "2px 6px", cursor: "pointer" }
+                           }, "Edit")
+                       );
+                   }
+                   
+                   // Logic for Pending Scores
+                   var submitterTeam = 0;
+                   if (hasPending && m.submittedBy) {
+                      if (m.submittedBy === m.player1Id || m.submittedBy === m.partner1Id) submitterTeam = 1;
+                      else submitterTeam = 2;
+                   }
+                   
+                   var isOpponentPending = hasPending && isParticipant && submitterTeam !== myTeam;
+                   var isMyPending = hasPending && isParticipant && submitterTeam === myTeam;
+                   
+                   var submitterName = "";
+                   if (hasPending && m.submittedBy) {
+                        var sUser = users.find(function(u) { return u.id === m.submittedBy; });
+                        if (sUser) submitterName = sUser.fullName || sUser.email;
+                   }
+
+                   if (!canInteract) {
+                        return e("div", { style: { textAlign: "center", color: "#666" } }, "Waiting for round start...");
+                   }
+
+                   // 1. Organizer View (Proposal Review)
+                   if (organizerCanEdit) {
+                       return e("div", { style: { display: "flex", flexDirection: "column", gap: 8, alignItems: "center" } },
+                           hasPending && e("div", { style: { fontSize: 11, color: "orange" } }, 
+                               "Proposal" + (submitterName ? " by " + submitterName : "") + ": " + pendingS1 + "-" + pendingS2
+                           ),
+                           e("div", { style: { display: "flex", gap: 8, alignItems: "center" } },
+                               e("input", { 
+                                   type: "number", placeholder: "0", defaultValue: hasPending ? pendingS1 : m.score1,
+                                   id: "sh_s1_" + m.id,
+                                   style: { width: 50, padding: 8, textAlign: "center", fontSize: 16 }
+                               }),
+                               e("span", null, "-"),
+                               e("input", { 
+                                   type: "number", placeholder: "0", defaultValue: hasPending ? pendingS2 : m.score2,
+                                   id: "sh_s2_" + m.id,
+                                   style: { width: 50, padding: 8, textAlign: "center", fontSize: 16 }
+                               }),
+                               e("button", {
+                                   onClick: function() {
+                                       var s1 = document.getElementById("sh_s1_" + m.id).value;
+                                       var s2 = document.getElementById("sh_s2_" + m.id).value;
+                                       if (s1 && s2) handleUpdateScore(m, { score1: Number(s1), score2: Number(s2) });
+                                   },
+                                   style: { padding: "8px 12px", background: "#2563eb", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }
+                               }, "Save")
+                           )
+                       );
+                   }
+
+                   // 2. Participant View: Opponent Proposal (Confirm/Edit)
+                   if (isOpponentPending) {
+                       return e("div", { style: { display: "flex", flexDirection: "column", gap: 4, background: "#fffbeb", padding: 8, borderRadius: 4 } },
+                           e("div", { style: { fontWeight: "bold", fontSize: 12, textAlign: "center" } }, "Opponent proposes: " + pendingS1 + " - " + pendingS2),
+                           e("div", { style: { display: "flex", gap: 8, justifyContent: "center" } },
+                               e("button", {
+                                   onClick: function() {
+                                       handleUpdateScore(m, { score1: Number(pendingS1), score2: Number(pendingS2) });
+                                   },
+                                   style: { padding: "6px 12px", background: "#10b981", color: "white", border: "none", borderRadius: 4, cursor: "pointer", fontWeight: "bold" }
+                               }, "Confirm"),
+                               e("button", {
+                                   onClick: function() {
+                                       // To edit, we basically just show inputs but pre-filled. 
+                                       // Simplest is to just allow overwriting by ignoring this view? 
+                                       // Or provide inputs here. Let's provide inputs.
+                                       var newS1 = prompt("Counter-propose Score 1:", pendingS1);
+                                       var newS2 = prompt("Counter-propose Score 2:", pendingS2);
+                                       if (newS1 && newS2) handleUpdateScore(m, { score1: Number(newS1), score2: Number(newS2) });
+                                   },
+                                   style: { padding: "6px 12px", background: "#f3f4f6", color: "#333", border: "1px solid #ccc", borderRadius: 4, cursor: "pointer" }
+                               }, "Edit")
+                           )
+                       );
+                   }
+
+                   // 3. Participant View: My Pending (Waiting)
+                   if (isMyPending) {
+                        return e("div", { style: { textAlign: "center", color: "#d97706", fontStyle: "italic", padding: 8 } }, 
+                           "Waiting for confirmation...",
+                           e("div", { style: { fontSize: 12, marginTop: 4 } }, "(" + pendingS1 + " - " + pendingS2 + ")"),
+                           e("button", {
+                               onClick: function() {
+                                   var newS1 = prompt("Update your proposal Score 1:", pendingS1);
+                                   var newS2 = prompt("Update your proposal Score 2:", pendingS2);
+                                   if (newS1 && newS2) handleUpdateScore(m, { score1: Number(newS1), score2: Number(newS2) });
+                               },
+                               style: { marginTop: 8, padding: "4px 8px", fontSize: 11, background: "transparent", border: "1px solid #d97706", color: "#d97706", borderRadius: 4, cursor: "pointer" }
+                           }, "Edit Proposal")
+                        );
+                   }
+                   
+                   // 4. Default Input Form
+                   return e("div", { style: { display: "flex", justifyContent: "center", alignItems: "center", gap: 8 } },
+                       e("input", { 
+                           type: "number", placeholder: "0", defaultValue: m.score1,
+                           id: "sh_s1_" + m.id,
+                           style: { width: 50, padding: 8, textAlign: "center", fontSize: 16, background: "white" }
+                       }),
+                       e("span", null, "-"),
+                       e("input", { 
+                           type: "number", placeholder: "0", defaultValue: m.score2,
+                           id: "sh_s2_" + m.id,
+                           style: { width: 50, padding: 8, textAlign: "center", fontSize: 16, background: "white" }
+                       }),
+                       e("button", {
+                           onClick: function() {
+                               var s1 = document.getElementById("sh_s1_" + m.id).value;
+                               var s2 = document.getElementById("sh_s2_" + m.id).value;
+                               if (s1 && s2) handleUpdateScore(m, { score1: Number(s1), score2: Number(s2) });
+                           },
+                           style: { padding: "8px 12px", background: "#2563eb", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }
+                       }, "Save")
+                   );
+               })()
+           );
+        }
+
+        // SHUFFLE MODE SPECIFIC VIEW
+        if (selectedTournament.schedulingMode === "shuffle" && selectedTournament.format === "Round Robin") {
+            // Use per-court round progress
+            var courtProgress = selectedTournament.courtProgress || {};
+            
+            // 1. Identify Courts & My Courts
+            var courtIds = new Set();
+            matches.forEach(function(m) { if(m.court) courtIds.add(m.court); });
+            var allCourts = Array.from(courtIds).sort(function(a,b) { return a-b; });
+            
+            var myCourts = new Set();
+            if (currentUser && currentUser.role !== "Organizer") {
+                 matches.forEach(function(m) { 
+                     if (m.player1Id === currentUser.id || m.partner1Id === currentUser.id || m.player2Id === currentUser.id || m.partner2Id === currentUser.id) {
+                         if(m.court) myCourts.add(m.court);
+                     }
+                 });
+            }
+            
+            var visibleCourts = (currentUser.role === "Organizer" || myCourts.size === 0) ? allCourts : Array.from(myCourts).sort(function(a,b) { return a-b; });
+
+            // Calculate max round for button visibility (global max)
+            var maxRound = 0;
+            matches.forEach(function(m) { if(m.round > maxRound) maxRound = m.round; });
+
+            return e("div", { className: "shuffle-view" },
+                // Loop through Courts
+                visibleCourts.map(function(courtId) {
+                    // Determine current round for this court (Shuffle) or globally (Waterfall)
+                            var isShuffle = selectedTournament.schedulingMode === "shuffle";
+                            var cp = courtProgress[courtId];
+                            var currentCourtRound = isShuffle 
+                                ? ((cp && cp.currentRound !== undefined) ? cp.currentRound : 0)
+                                : (selectedTournament.currentRound || 0);
+
+                            // For rendering logic
+                    
+                    // Filter matches for this court
+                    var courtMatches = matches.filter(function(m) { return m.court === courtId; });
+                    
+                    // Filter Byes if Waterfall
+                    var byeMatches = matches.filter(function(m) { return m.status === 'bye' && m.round === currentCourtRound; }); // Wait, 'bye' matches have court=0 usually.
+                    // But here we are iterating 'visibleCourts'. Waterfall uses courts 1..N.
+                    // Byes should be displayed globally or per round?
+                    // "In each round show separate line of these players in state bye".
+                    // Since we iterate courts here for Shuffle, Waterfall might need different structure or just render matches by Round?
+                    // Shuffle View iterates Courts. Waterfall view iterates Rounds?
+                    // Currently Waterfall uses standard view? No, the code below is "SHUFFLE MODE SPECIFIC VIEW".
+                    // Wait, Waterfall is NOT Shuffle mode in `schedulingMode`.
+                    // Waterfall uses `schedulingMode: "waterfall"`.
+                    // So this block (lines 2990+) is ONLY for shuffle.
+                    // Where is Waterfall rendered? It falls through to "Standard View" below?
+                    // Let's check the condition: if (selectedTournament.schedulingMode === "shuffle" ...)
+                    // So Waterfall falls through.
+                    
+                    // --- Standings for this Court ---
+                    // Get players involved in this court
+                    var courtPlayers = new Set();
+                    courtMatches.forEach(function(m) {
+                        if(m.player1Id) courtPlayers.add(String(m.player1Id));
+                        if(m.partner1Id) courtPlayers.add(String(m.partner1Id));
+                        if(m.player2Id) courtPlayers.add(String(m.player2Id));
+                        if(m.partner2Id) courtPlayers.add(String(m.partner2Id));
+                    });
+                    var courtStandingsMap = {};
+                    courtPlayers.forEach(function(pid) {
+                        var u = users.find(function(x){ return x.id === pid; });
+                        courtStandingsMap[pid] = { 
+                            id: pid, 
+                            name: u ? (u.fullName || u.email) : pid, 
+                            won: 0, 
+                            lost: 0, 
+                            points: 0, 
+                            pointsFor: 0, 
+                            pointsAgainst: 0, 
+                            pointDiff: 0 
+                        };
+                    });
+                    courtMatches.forEach(function(m) {
+                        if (m.status === "completed") {
+                            var s1 = Number(m.score1) || 0;
+                            var s2 = Number(m.score2) || 0;
+                            var p1Won = s1 > s2;
+                            var update = function(pid, forPts, againstPts, won) {
+                                var s = courtStandingsMap[pid];
+                                if (!s) return;
+                                s.pointsFor += forPts;
+                                s.pointsAgainst += againstPts;
+                                s.pointDiff += (forPts - againstPts);
+                                if (won) { s.won++; s.points += 1; } else { s.lost++; }
+                            };
+                            update(m.player1Id, s1, s2, p1Won);
+                            update(m.partner1Id, s1, s2, p1Won);
+                            update(m.player2Id, s2, s1, !p1Won);
+                            update(m.partner2Id, s2, s1, !p1Won);
+                        }
+                    });
+                    var courtStandings = Object.values(courtStandingsMap).sort(function(a,b) { 
+                        if (b.points !== a.points) return b.points - a.points;
+                        if (b.pointDiff !== a.pointDiff) return b.pointDiff - a.pointDiff;
+                        return b.pointsFor - a.pointsFor;
+                    });
+                    
+                    // --- Schedule for this Court ---
+                    // Group by Round
+                    var courtRounds = {};
+                    courtMatches.forEach(function(m) {
+                        if(!courtRounds[m.round]) courtRounds[m.round] = [];
+                        courtRounds[m.round].push(m);
+                    });
+                    var roundKeys = Object.keys(courtRounds).sort(function(a,b) { return Number(a)-Number(b); });
+                    
+                    return e("div", { key: courtId, className: "court-section", style: { marginBottom: 32, border: "1px solid #ccc", padding: 16, borderRadius: 8, background: "#fff" } },
+                        e("h2", { style: { marginTop: 0, color: "#111827", borderBottom: "1px solid #eee", paddingBottom: 8 } }, "Court " + courtId),
+                        
+                        // Schedule
+                        e("div", null,
+                           e("h4", { style: { marginTop: 0, marginBottom: 8 } }, "Schedule"),
+                           roundKeys.map(function(rKey) {
+                               var r = Number(rKey);
+                               var isExpanded = r === currentCourtRound || (currentCourtRound === 0 && r === 1);
+                               // Highlight current round with color
+                               var roundStyle = {
+                                   marginBottom: 12, 
+                                   border: isExpanded ? "2px solid #3b82f6" : "1px solid #e5e7eb", 
+                                   borderRadius: 8, 
+                                   padding: 8, 
+                                   background: isExpanded ? "#eff6ff" : "#f9fafb"
+                               };
+                               
+                               // Check for BYE
+                               var myMatchesInRound = courtRounds[r].filter(function(m) {
+                                   return m.player1Id === currentUser.id || m.partner1Id === currentUser.id || m.player2Id === currentUser.id || m.partner2Id === currentUser.id;
+                               });
+                               var isBye = !isOrganizer && myMatchesInRound.length === 0;
+
+                               if (isBye) {
+                                   roundStyle.border = "2px solid #ec4899"; // Pink
+                                   roundStyle.background = "#fdf2f8";
+                               }
+            
+                               return e("div", { key: r, style: roundStyle },
+                                   e("h3", { style: { marginTop: 0, marginBottom: 8, fontSize: "1em", color: isExpanded ? "#1e40af" : "#6b7280" } }, 
+                                       "Round " + r + (isExpanded ? " (Current)" : "")
+                                   ),
+                                   isBye 
+                                    ? e("div", { style: { padding: 16, textAlign: "center", fontSize: "1.5em", fontWeight: "bold", color: "#db2777" } }, "BYE")
+                                    : courtRounds[r].map(function(m) {
+                                        return renderMatchItem(m, isExpanded);
+                                   })
+                               );
+                           }),
+                           
+                           // Start Next Round Button (For this court)
+                           ((organizerCanEdit) || (selectedTournament.schedulingMode === "shuffle" && currentUser && courtPlayers.has(String(currentUser.id)))) && currentCourtRound < maxRound && e("div", { style: { marginTop: 16 } },
+                                e("button", {
+                                    onClick: function() {
+                                         // Start Next Round for this court
+                                         fetch("/tournaments/" + selectedTournament.id + "/round/start", {
+                                             method: "POST",
+                                             headers: { "Content-Type": "application/json", "x-user-id": currentUser.id },
+                                             body: JSON.stringify({ courtId: courtId })
+                                         })
+                                         .then(function(res) { 
+                                             if (!res.ok) throw new Error("Status: " + res.status);
+                                             return res.json(); 
+                                         })
+                                         .then(function(updated) {
+                                             if (updated.error) throw new Error(updated.error);
+                                             setSelectedTournament(updated);
+                                         })
+                                         .catch(function(err) {
+                                             console.error(err);
+                                             alert("Failed to start round: " + err.message);
+                                         });
+                                    },
+                                    style: {
+                                        width: "100%",
+                                        padding: 12,
+                                        background: "#2563eb",
+                                        color: "white",
+                                        border: "none",
+                                        borderRadius: 6,
+                                        fontSize: 16,
+                                        fontWeight: "bold",
+                                        cursor: "pointer"
+                                    }
+                                }, "Start Round " + (currentCourtRound + 1))
+                           )
+                        ),
+
+                        // Standings Table (Moved to bottom)
+                        e("div", { style: { marginTop: 24, paddingTop: 16, borderTop: "1px solid #eee" } },
+                           e("h4", { style: { marginTop: 0, marginBottom: 8 } }, "Standings"),
+                           e("div", { style: { overflowX: "auto" } },
+                               e("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "0.9em" } },
+                                   e("thead", null, 
+                                       e("tr", { style: { background: "#f3f4f6" } },
+                                           e("th", { style: { padding: 4, textAlign: "left" } }, "Player"),
+                                           e("th", { style: { padding: 4, textAlign: "center" } }, "Pts"),
+                                           e("th", { style: { padding: 4, textAlign: "center" } }, "W-L"),
+                                           e("th", { style: { padding: 4, textAlign: "center" } }, "Diff")
+                                       )
+                                   ),
+                                   e("tbody", null,
+                                       courtStandings.map(function(s, idx) {
+                                           // Highlight me
+                                           var isMe = currentUser && s.id === currentUser.id;
+                                           return e("tr", { key: s.id, style: { borderBottom: "1px solid #e5e7eb", background: isMe ? "#eff6ff" : "transparent" } },
+                                               e("td", { style: { padding: 4 } }, (idx+1) + ". " + s.name),
+                                               e("td", { style: { padding: 4, textAlign: "center", fontWeight: "bold" } }, s.points),
+                                               e("td", { style: { padding: 4, textAlign: "center" } }, s.won + "-" + s.lost),
+                                               e("td", { style: { padding: 4, textAlign: "center", color: s.pointDiff > 0 ? "green" : (s.pointDiff < 0 ? "red" : "black") } }, s.pointDiff > 0 ? "+" + s.pointDiff : s.pointDiff)
+                                           );
+                                       })
+                                   )
+                               )
+                           )
+                        )
+                    );
+                })
+            );
+        }
+
+        
+        // Group Matches by Round
+        var matchesByRound = {};
+        matches.forEach(function(m) {
+           var r = m.round || 1;
+           if (!matchesByRound[r]) matchesByRound[r] = [];
+           matchesByRound[r].push(m);
+        });
+        
+        var rounds = Object.keys(matchesByRound).sort(function(a,b){ return Number(a)-Number(b); });
+
+        // Helper functions MUST be defined before return
+        function handleResetTournament() {
+           if (!confirm("Are you sure you want to reset the tournament? All matches and scores will be lost.")) return;
+           
+           fetch("/tournaments/" + selectedTournament.id + "/reset", {
+             method: "POST",
+             headers: { "x-user-id": currentUser.id }
+           })
+           .then(function(r) { return r.json(); })
+           .then(function(data) {
+               if (data.error) throw new Error(data.error);
+               refreshMatches(selectedTournament.id); 
+               // Refresh tournament details to update status/currentRound from server
+               fetch("/tournaments").then(function(r){return r.json()}).then(function(list){
+                   setTournaments(list);
+                   var updated = list.find(function(t){ return t.id === selectedTournament.id; });
+                   if(updated) setSelectedTournament(updated);
+               });
+           })
+           .catch(function(e) { console.error(e); alert("Failed to reset: " + e.message); });
+        }
+
+        
+        function handleUpdateScore(match, updates) {
+           fetch("/matches/" + match.id, {
+             method: "PATCH",
+             headers: { "Content-Type": "application/json", "x-user-id": currentUser.id },
+             body: JSON.stringify(updates)
+           })
+           .then(function(r) { return r.json(); })
+             .then(function() { 
+                 refreshMatches(selectedTournament.id); 
+                 fetch("/tournaments").then(function(r){return r.json()}).then(function(data){
+                     setTournaments(data);
+                     var updated = data.find(function(t){ return t.id === selectedTournament.id; });
+                     if(updated) setSelectedTournament(updated);
+                 });
+             })
+             .catch(function(e) { console.error(e); alert("Failed to save score: " + e.message); });
+        }
+
+        // Helper to render a single match card
+        function renderMatchCard(m) {
+            var p1Display = m.partner1Name ? (m.player1Name + " & " + m.partner1Name) : m.player1Name;
+            var p2Display = m.partner2Name ? (m.player2Name + " & " + m.partner2Name) : m.player2Name;
+            
+            // Permissions logic
+            var isCompleted = m.status === "completed";
+            var amIP1 = currentUser && currentUser.id === m.player1Id;
+            var amIPt1 = currentUser && currentUser.id === m.partner1Id;
+            var amIP2 = currentUser && currentUser.id === m.player2Id;
+            var amIPt2 = currentUser && currentUser.id === m.partner2Id;
+            var isParticipant = amIP1 || amIPt1 || amIP2 || amIPt2;
+            
+            // Determine my team if participant
+            var myTeam = (amIP1 || amIPt1) ? 1 : 2;
+            
+            // Pending logic
+            var pendingS1 = m.pendingScore1;
+            var pendingS2 = m.pendingScore2;
+            var hasPending = pendingS1 != null && pendingS2 != null;
+            
+            var submitterName = "";
+            if (hasPending && m.submittedBy) {
+                 var sUser = users.find(function(u) { return u.id === m.submittedBy; });
+                 if (sUser) submitterName = sUser.fullName || sUser.email;
+            }
+            
+            var submitterTeam = 0;
+            if (hasPending && m.submittedBy) {
+               if (m.submittedBy === m.player1Id || m.submittedBy === m.partner1Id) submitterTeam = 1;
+               else submitterTeam = 2;
+            }
+            
+            var isOpponentPending = hasPending && isParticipant && submitterTeam !== myTeam;
+            var isMyPending = hasPending && isParticipant && submitterTeam === myTeam;
+            
+            var roundStarted = false;
+            if (selectedTournament.schedulingMode === "shuffle") {
+                var mCourtId = String(m.court);
+                var cp = courtProgress[mCourtId];
+                roundStarted = cp && cp.status === 'in_progress' && cp.currentRound === m.round;
+            } else {
+                roundStarted = !!selectedTournament.roundStartTime && m.round === selectedTournament.currentRound;
+            }
+
+            var canInteract = !isCompleted && (organizerCanEdit || (roundStarted && isParticipant));
+            
+            // Render Content
+            var renderControls = function() {
+               if (!canInteract) {
+                   return e("div", null, (m.status === "completed" ? m.score1 + " - " + m.score2 : "TBD"));
+               }
+               
+               if (m.status === "completed") {
+                   return e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                       e("span", { style: { fontWeight: "bold" } }, m.score1 + " - " + m.score2),
+                       organizerCanEdit && e("button", {
+                           onClick: function() { 
+                              handleUpdateScore(m, { score1: null, score2: null, pendingScore1: null, pendingScore2: null }); 
+                           },
+                           style: { fontSize: 10, padding: 2 }
+                       }, "Edit")
+                   );
+               }
+               
+               if (organizerCanEdit) {
+                   return e("div", { style: { display: "flex", flexDirection: "column", gap: 4 } },
+                       hasPending && e("div", { style: { fontSize: 11, color: "orange" } }, 
+                           "Proposal" + (submitterName ? " by " + submitterName : "") + ": " + pendingS1 + "-" + pendingS2
+                       ),
+                       e("div", { style: { display: "flex", gap: 8, alignItems: "center" } },
+                           e("input", { 
+                               type: "number", placeholder: "S1", defaultValue: hasPending ? pendingS1 : m.score1,
+                               id: "org_s1_" + m.id,
+                               style: { width: 40, padding: 4 }
+                           }),
+                           e("span", null, "-"),
+                           e("input", { 
+                               type: "number", placeholder: "S2", defaultValue: hasPending ? pendingS2 : m.score2,
+                               id: "org_s2_" + m.id,
+                               style: { width: 40, padding: 4 }
+                           }),
+                           e("button", {
+                               onClick: function() {
+                                   var s1 = document.getElementById("org_s1_" + m.id).value;
+                                   var s2 = document.getElementById("org_s2_" + m.id).value;
+                                   if (s1 && s2) handleUpdateScore(m, { score1: Number(s1), score2: Number(s2) });
+                               },
+                               style: { padding: "2px 6px", fontSize: 12, background: "#2563eb", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }
+                           }, "Save")
+                       )
+                   );
+               }
+               
+               // Participant View
+               if (isOpponentPending) {
+                   return e("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4 } },
+                       e("div", { style: { fontSize: 12, color: "orange", fontWeight: "bold" } }, 
+                           "Confirm Score: " + pendingS1 + " - " + pendingS2
+                       ),
+                       e("button", {
+                           onClick: function() {
+                               handleUpdateScore(m, { score1: pendingS1, score2: pendingS2 });
+                           },
+                           style: { padding: "4px 8px", background: "#10b981", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }
+                       }, "Confirm")
+                   );
+               }
+               
+               if (isMyPending) {
+                   return e("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4 } },
+                       "Waiting for confirmation...",
+                       e("div", { style: { fontSize: 12, marginTop: 4 } }, "(" + pendingS1 + " - " + pendingS2 + ")"),
+                       e("button", {
+                           onClick: function() {
+                               var newS1 = prompt("Update your proposal Score 1:", pendingS1);
+                               var newS2 = prompt("Update your proposal Score 2:", pendingS2);
+                               if (newS1 && newS2) handleUpdateScore(m, { score1: Number(newS1), score2: Number(newS2) });
+                           },
+                           style: { marginTop: 8, padding: "4px 8px", fontSize: 11, background: "transparent", border: "1px solid #d97706", color: "#d97706", borderRadius: 4, cursor: "pointer" }
+                       }, "Edit Proposal")
+                    );
+               }
+               
+               // Default Input Form
+               return e("div", { style: { display: "flex", justifyContent: "center", alignItems: "center", gap: 8 } },
+                   e("input", { 
+                       type: "number", placeholder: "0", defaultValue: m.score1,
+                       id: "std_s1_" + m.id,
+                       style: { width: 50, padding: 8, textAlign: "center", fontSize: 16, background: "white" }
+                   }),
+                   e("span", null, "-"),
+                   e("input", { 
+                       type: "number", placeholder: "0", defaultValue: m.score2,
+                       id: "std_s2_" + m.id,
+                       style: { width: 50, padding: 8, textAlign: "center", fontSize: 16, background: "white" }
+                   }),
+                   e("button", {
+                       onClick: function() {
+                           var s1 = document.getElementById("std_s1_" + m.id).value;
+                           var s2 = document.getElementById("std_s2_" + m.id).value;
+                           if (s1 && s2) handleUpdateScore(m, { score1: Number(s1), score2: Number(s2) });
+                       },
+                       style: { padding: "8px 12px", background: "#2563eb", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }
+                   }, "Save")
+               );
+            };
+
+            return e("div", { key: m.id, style: { width: "calc(50% - 8px)", minWidth: 300, background: "white", padding: 12, borderRadius: 8, border: "1px solid #e5e7eb", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" } },
+                e("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 8 } },
+                    e("span", { style: { fontSize: 12, color: "#6b7280" } }, "Court " + m.court),
+                    e("span", { style: { fontSize: 12, fontWeight: "bold", color: m.status === "completed" ? "#10b981" : "#f59e0b" } }, m.status.toUpperCase())
+                ),
+                e("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+                    e("div", { style: { display: "flex", justifyContent: "space-between", fontWeight: amIP1 || amIPt1 ? "bold" : "normal" } },
+                        e("span", null, p1Display),
+                        m.score1 != null && e("span", { style: { fontSize: 18 } }, m.score1)
+                    ),
+                    e("div", { style: { display: "flex", justifyContent: "space-between", fontWeight: amIP2 || amIPt2 ? "bold" : "normal" } },
+                        e("span", null, p2Display),
+                        m.score2 != null && e("span", { style: { fontSize: 18 } }, m.score2)
+                    )
+                ),
+                e("div", { style: { marginTop: 12, borderTop: "1px solid #f3f4f6", paddingTop: 8, display: "flex", justifyContent: "center" } },
+                    renderControls()
+                )
+            );
+        }
+
+         // Render Standard View (Waterfall, etc)
+         return e("div", null,
+             e("div", { className: "section" },
+              e("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+                 e("h2", { className: "section-title" }, "Matches & Schedule"),
+                 e("div", { style: { display: "flex", gap: "8px" } },
+                     organizerCanEdit && e("button", { 
+                        type: "button", 
+                        onClick: handleResetTournament,
+                        style: { padding: "6px 10px", fontSize: 12, background: "#ef4444", color: "white", border: "none", borderRadius: 6, cursor: "pointer" } 
+                     }, "Reset Tournament")
+                 )
+              ),
+              matches.length === 0 && e("div", { className: "small" }, "No matches generated"),
+              rounds.map(function(roundNum) {
+                 var roundMatches = matchesByRound[roundNum];
+                 
+                 // Separate Byes
+                 var standardMatches = roundMatches.filter(function(m){ return m.status !== 'bye'; });
+                 var byeMatches = roundMatches.filter(function(m){ return m.status === 'bye'; });
+                 
+                 return e("div", { key: roundNum, style: { marginBottom: 24, padding: 12, border: "1px solid #e5e7eb", borderRadius: 8, background: "#f9fafb" } },
+                     e("h3", { style: { marginTop: 0, borderBottom: "1px solid #ddd", paddingBottom: 8 } }, "Round " + roundNum),
+                     
+                     e("div", { style: { display: "flex", flexWrap: "wrap", gap: 16 } },
+                         standardMatches.map(function(m) {
+                             return renderMatchCard(m);
+                         })
+                     ),
+                     
+                     // Show Byes if any
+                     byeMatches.length > 0 && e("div", { style: { marginTop: 12, padding: 8, background: "#fff", border: "1px dashed #9ca3af", borderRadius: 4, color: "#6b7280", fontSize: "0.9em" } },
+                         e("strong", null, "Byes (Sitting out): "),
+                         byeMatches.map(function(bm) {
+                             var pIds = (bm.player1Id || "").split(',');
+                             return pIds.map(function(pid) {
+                                 var u = users.find(function(x){ return x.id === pid; });
+                                 return u ? u.fullName : pid;
+                             }).join(", ");
+                         }).join(", ")
+                     )
+                 );
+             })
+            ),
+           e("div", { className: "section" },
+             e("h2", { className: "section-title" }, "Standings (" + (selectedTournament.format || "Round Robin") + ((selectedTournament.format && selectedTournament.format !== "Round Robin" && selectedTournament.format !== "Waterfall") ? " - now Round Robin only" : "") + ")"),
+             e("table", { style: { width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" } },
+               e("thead", null, 
+                 e("tr", null, 
+                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "Player"),
+                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "P"),
+                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "W"),
+                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "L"),
+                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "PF"),
+                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "PA"),
+                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "Diff"),
+                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "Pts")
+                 )
+               ),
+               e("tbody", null,
+                 sortedStandings.map(function(s) {
+                    return e("tr", { key: s.name },
+                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.name),
+                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.played),
+                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.won),
+                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.lost),
+                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.pointsFor),
+                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.pointsAgainst),
+                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4, color: s.pointDiff >= 0 ? "green" : "red" } }, s.pointDiff > 0 ? "+" + s.pointDiff : s.pointDiff),
+                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4, fontWeight: "bold" } }, s.points)
+                    );
+                 })
+               )
+             )
+           )
+        );
+      }
+
+      function renderTournamentDetails() {
+        if (!selectedTournament) {
+          return e(
+            "div",
+            { className: "section" },
+            e("h2", { className: "section-title" }, "Tournament"),
+            e("div", { className: "small" }, "No tournament selected")
+          );
+        }
+        var canEdit =
+          currentUser &&
+          currentUser.role === "Organizer" &&
+          selectedTournament.createdBy === currentUser.id;
+        var isJoined =
+          myTournamentsData.some(function(t) { return t.id === selectedTournament.id; });
+        var startText = selectedTournament.startDate
+          ? formatDate(selectedTournament.startDate)
+          : "Not scheduled";
+        var durationText =
+          selectedTournament.durationMinutes != null
+            ? selectedTournament.durationMinutes + " minutes"
+            : "Not set";
+        var maxParticipantsText =
+          selectedTournament.maxParticipants != null &&
+          selectedTournament.maxParticipants > 0
+            ? selectedTournament.maxParticipants
+            : "No limit";
+        return e(
+          "div",
+          null,
+          e(
+            "div",
+            { className: "section" },
+            e(
+              "button",
+              {
+                type: "button",
+                onClick: function () {
+                  setView("tournaments");
+                },
+                style: {
+                  marginBottom: 8,
+                  padding: 6,
+                  borderRadius: 6,
+                  border: "1px solid #d1d5db",
+                  background: "#ffffff",
+                  fontSize: 12
+                }
+              },
+              "\u2190 Back"
+            ),
+            tourTimerString && e(
+               "div",
+               { className: "small", style: { marginBottom: 8, fontSize: "2em", fontWeight: "bold", color: "#4b5563" } },
+               "Total Time: " + tourTimerString
+            ),
+            e(
+              "h2",
+              { className: "section-title" },
+              selectedTournament.name
+            ),
+            e(
+              "div",
+              { className: "small" },
+              selectedTournament.location
+                ? selectedTournament.location.name +
+                    " \u2022 " +
+                    selectedTournament.location.city +
+                    ", " +
+                    selectedTournament.location.country
+                : "Location not set"
+            ),
+            e(
+              "div",
+              { className: "small" },
+              "Format: ",
+              (selectedTournament.format || "Round Robin") + " (" + (selectedTournament.type || "Singles") + ") - Mode: " + (selectedTournament.schedulingMode || "fixed")
+            ),
+            e(
+              "div",
+              { className: "small" },
+              "Courts: ",
+              selectedTournament.courtsCount
+            ),
+            selectedTournament.roundsCount && e(
+              "div",
+              { className: "small" },
+              "Rounds: ",
+              selectedTournament.roundsCount
+            ),
+            selectedTournament.roundDurationMinutes && e(
+              "div",
+              { className: "small" },
+              "Round Duration: ",
+              selectedTournament.roundDurationMinutes + " min"
+            ),
+            e(
+              "div",
+              { className: "small" },
+              "Status: ",
+              selectedTournament.status
+            ),
+            selectedTournament.status === "In Progress" && e(
+               "div",
+               { className: "small", style: { marginTop: 4, fontWeight: "bold", color: "#2563eb" } },
+               "Current Round: " + (selectedTournament.currentRound || 0) + 
+               " / " + (selectedTournament.roundsCount || "?")
+            ),
+            timerString && e(
+               "div",
+               { className: "small", style: { marginTop: 4, fontSize: "3em", fontWeight: "bold", color: "#d97706" } },
+               "\u23F1 " + timerString
+            ),
+            canEdit && e("div", { style: { marginTop: 8, display: "flex", gap: 8 } },
+               (selectedTournament.status === "Open" || selectedTournament.status === "Scheduled") && (function(){
+                   var reqPlayers = selectedTournament.maxParticipants || (selectedTournament.schedulingMode === "shuffle" ? (selectedTournament.courtsCount || 1) * 5 : 4);
+                   var canStart = (selectedTournament.registeredCount || 0) >= reqPlayers;
+                   return e("button", {
+                   type: "button",
+                   disabled: !canStart,
+                   onClick: function() {
+                      if(!canStart) return;
+                      fetch("/tournaments/" + selectedTournament.id + "/start", {
+                          method: "POST",
+                          headers: { "x-user-id": currentUser.id }
+                      })
+                      .then(function(r) { return r.json(); })
+                      .then(function(t) {
+                          // Automatically generate schedule
+                          return fetch("/tournaments/" + t.id + "/generate-schedule", {
+                              method: "POST",
+                              headers: { "x-user-id": currentUser.id }
+                          }).then(function(res) {
+                               if (!res.ok) {
+                                   return res.json().then(function(err) { 
+                                       alert("Tournament started, but schedule generation failed: " + err.error);
+                                       return t;
+                                   });
+                               }
+                               return t; 
+                          });
+                      })
+                      .then(function(t) { 
+                          setSelectedTournament(t);
+                          // Refresh list
+                          fetch("/tournaments").then(function(r){return r.json()}).then(setTournaments);
+                          // Refresh matches
+                          refreshMatches(t.id);
+                      });
+                   },
+                   style: { 
+                       padding: "6px 12px", 
+                       background: canStart ? "#2563eb" : "#9ca3af", 
+                       color: "white", 
+                       border: "none", 
+                       borderRadius: 6, 
+                       cursor: canStart ? "pointer" : "not-allowed" 
+                   }
+               }, "Start Tournament" + (!canStart ? " (" + (selectedTournament.registeredCount || 0) + "/" + reqPlayers + ")" : ""));
+               })(),
+               
+               (selectedTournament.status === "In Progress" || selectedTournament.status === "Open") && matches.length > 0 && e("button", {
+                   type: "button",
+                   onClick: function() {
+                      if (!confirm("Are you sure you want to finish this tournament?")) return;
+                      fetch("/tournaments/" + selectedTournament.id + "/finish", {
+                          method: "POST",
+                          headers: { "x-user-id": currentUser.id }
+                      })
+                      .then(function(r) { return r.json(); })
+                      .then(function(t) { 
+                          setSelectedTournament(t);
+                          fetch("/tournaments").then(function(r){return r.json()}).then(setTournaments);
+                      });
+                   },
+                   style: { padding: "6px 12px", background: "#059669", color: "white", border: "none", borderRadius: 6, cursor: "pointer", marginLeft: 8 }
+               }, "Finish Tournament"),
+               
+               selectedTournament.status === "In Progress" && !selectedTournament.roundStartTime && (
+                   (function() {
+                       var currentRound = selectedTournament.currentRound || 0;
+                       var currentRoundMatches = matches.filter(function(m) { return m.round === currentRound; });
+                       var currentRoundIncomplete = currentRoundMatches.some(function(m) { return m.status !== "completed" && !(m.score1 && m.score2); });
+                       
+                       if (currentRound > 0 && currentRoundIncomplete) {
+                           return e("button", {
+                               type: "button",
+                               onClick: function() {
+                                   fetch("/tournaments/" + selectedTournament.id + "/round/start", {
+                                       method: "POST",
+                                       headers: { "x-user-id": currentUser.id }
+                                   })
+                                   .then(function(r) { 
+                                       if (!r.ok) return r.json().then(function(err) { alert(err.error); throw err; });
+                                       return r.json(); 
+                                   })
+                                   .then(function(t) { setSelectedTournament(t); })
+                                   .catch(function(e) { console.error(e); });
+                               },
+                               style: { padding: "6px 12px", background: "#10b981", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }
+                           }, "Start Round " + currentRound);
+                       }
+                       
+                       var nextRound = currentRound + 1;
+                       var nextRoundMatches = matches.filter(function(m) { return m.round === nextRound; });
+                       
+                       var maxRounds = selectedTournament.roundsCount || 100;
+                       if (selectedTournament.durationMinutes && selectedTournament.roundDurationMinutes) {
+                           var dur = selectedTournament.durationMinutes;
+                           var rd = selectedTournament.roundDurationMinutes;
+                           var bt = selectedTournament.breakTimeMinutes || 0;
+                           if (rd + bt > 0) {
+                               var calculatedMax = Math.floor((dur + bt) / (rd + bt));
+                               if (calculatedMax > 0) maxRounds = Math.min(maxRounds, calculatedMax);
+                           }
+                       }
+                       
+                       if (nextRoundMatches.length > 0) {
+                           return e("button", {
+                               type: "button",
+                               onClick: function() {
+                                   fetch("/tournaments/" + selectedTournament.id + "/round/start", {
+                                       method: "POST",
+                                       headers: { "x-user-id": currentUser.id }
+                                   })
+                                   .then(function(r) { 
+                                       if (!r.ok) return r.json().then(function(err) { alert(err.error); throw err; });
+                                       return r.json(); 
+                                   })
+                                   .then(function(t) { setSelectedTournament(t); })
+                                   .catch(function(e) { console.error(e); });
+                               },
+                               style: { padding: "6px 12px", background: "#10b981", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }
+                           }, "Start Round " + nextRound);
+                       } else if (nextRound <= maxRounds) {
+                           return e("button", {
+                               type: "button",
+                               onClick: function() {
+                                   fetch("/tournaments/" + selectedTournament.id + "/rounds/next", {
+                                       method: "POST",
+                                       headers: { "x-user-id": currentUser.id }
+                                   })
+                                   .then(function(r) { 
+                                       if (!r.ok) return r.json().then(function(err) { alert(err.error); throw err; });
+                                       return r.json(); 
+                                   })
+                                   .then(function(data) { 
+                                       if (data.count === 0) {
+                                           alert("Warning: 0 matches generated. You need at least 4 participants for doubles.");
+                                       }
+                                       refreshMatches(selectedTournament.id);
+                                       fetch("/tournaments").then(function(r){return r.json()}).then(function(data){
+                                           setTournaments(data);
+                                           var updated = data.find(function(t){ return t.id === selectedTournament.id; });
+                                           if(updated) setSelectedTournament(updated);
+                                       });
+                                   })
+                                   .catch(function(e) { console.error(e); alert(e.message); });
+                               },
+                               style: { padding: "6px 12px", background: "#8b5cf6", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }
+                           }, "Generate Round " + nextRound);
+                       } else {
+                           return null;
+                       }
+                   })()
+               ),
+               
+               selectedTournament.status === "In Progress" && selectedTournament.roundStartTime && e("button", {
+                   type: "button",
+                   onClick: function() {
+                      fetch("/tournaments/" + selectedTournament.id + "/round/finish", {
+                          method: "POST",
+                          headers: { "x-user-id": currentUser.id }
+                      })
+                      .then(function(r) { return r.json(); })
+                      .then(function(t) { setSelectedTournament(t); });
+                   },
+                   style: { padding: "6px 12px", background: "#f59e0b", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }
+               }, "Finish Round " + (selectedTournament.currentRound || 1))
+            ),
+            e(
+              "div",
+              { className: "small" },
+              "Start: ",
+              startText
+            ),
+            e(
+              "div",
+              { className: "small" },
+              "Duration: ",
+              durationText
+            ),
+            e(
+              "div",
+              { className: "small" },
+              "Max participants: ",
+              maxParticipantsText
+            ),
+            e(
+               "div",
+               { style: { marginTop: 12, display: "flex", gap: 8 } },
+               canEdit && selectedTournament.status === "Completed" && e("button", {
+                 type: "button",
+                 onClick: function() {
+                    fetch("/tournaments/" + selectedTournament.id, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json", "x-user-id": currentUser.id },
+                      body: JSON.stringify({ status: "Open" })
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(updated) { 
+                       setSelectedTournament(updated); 
+                       refreshTournaments();
+                    })
+                    .catch(function(e) { console.error(e); });
+                 },
+                 style: { padding: 8, borderRadius: 6, border: "none", background: "#f59e0b", color: "white", fontWeight: 600 }
+               }, "Reopen Tournament"),
+               canEdit && e("button", {
+                 type: "button",
+                 onClick: function() {
+                    if (!confirm("Are you sure you want to completely DELETE this tournament and all its data? This cannot be undone.")) return;
+                    fetch("/tournaments/" + selectedTournament.id, {
+                      method: "DELETE",
+                      headers: { "x-user-id": currentUser.id }
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(res) { 
+                       if (res.error) alert(res.error);
+                       else {
+                           alert("Tournament deleted");
+                           setSelectedTournament(null); 
+                           refreshTournaments();
+                       }
+                    })
+                    .catch(function(e) { console.error(e); });
+                 },
+                 style: { padding: 8, borderRadius: 6, border: "none", background: "#ef4444", color: "white", fontWeight: 600 }
+               }, "Delete Tournament")
+            ),
+            e(
+              "div",
+              { style: { marginTop: 8 } },
+              isJoined
+                ? e(
+                    "span",
+                    { className: "small" },
+                    "You are registered in this tournament"
+                  )
+                : e(
+                    "span",
+                    { className: "small" },
+                    "You are not registered in this tournament"
+                  )
+            ),
+            e(
+              "div",
+              { style: { marginTop: 8, display: "flex", gap: 8 } },
+              !isJoined &&
+                e(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: handleJoinTournament,
+                    style: {
+                      flex: 1,
+                      padding: 10,
+                      borderRadius: 6,
+                      border: "none",
+                      background: "#111827",
+                      color: "#f9fafb",
+                      fontWeight: 600,
+                      fontSize: 14
+                    }
+                  },
+                  "Join tournament"
+                ),
+              isJoined &&
+                e(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: handleLeaveTournament,
+                    style: {
+                      flex: 1,
+                      padding: 10,
+                      borderRadius: 6,
+                      border: "1px solid #d1d5db",
+                      background: "#ffffff",
+                      color: "#111827",
+                      fontWeight: 500,
+                      fontSize: 14
+                    }
+                  },
+                  "Leave tournament"
+                )
+            )
+          ),
+          (currentUser && currentUser.role === "Organizer") && e(
+            "div",
+            { className: "section" },
+            e(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  cursor: "pointer"
+                },
+                onClick: function() { setShowParticipants(!showParticipants); }
+              },
+              e(
+                "div",
+                { style: { display: "flex", alignItems: "center", gap: 8 } },
+                e("h2", { className: "section-title", style: { marginBottom: 0 } }, "Participants (" + participantsConfirmed.length + ")"),
+                e("span", { style: { fontSize: "0.8em", color: "#6b7280" } }, showParticipants ? "\u25BC" : "\u25B6")
+              ),
+              canEdit &&
+                e(
+                  "div",
+                  { style: { display: "flex", gap: 8 } },
+                  e(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: function(e) {
+                         e.stopPropagation();
+                         handleShuffleParticipants();
+                      },
+                      title: "Shuffle confirmed players",
+                      style: {
+                        padding: 6,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        background: "#ffffff",
+                        fontSize: 12,
+                        whiteSpace: "nowrap"
+                      }
+                    },
+                    "Shuffle Players"
+                  ),
+                  e(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: function(e) {
+                         e.stopPropagation();
+                         handleFillParticipantsRandom();
+                      },
+                      title: "Заполнить игроками из общего списка",
+                      style: {
+                        padding: 6,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        background: "#ffffff",
+                        fontSize: 12,
+                        whiteSpace: "nowrap"
+                      }
+                    },
+                    "Заполнить игроками"
+                  )
+                )
+            ),
+            showParticipants && participantsConfirmed.length === 0 && e("div", { className: "small" }, "No participants yet"),
+            showParticipants && participantsConfirmed.map(function(u) {
+               return e("div", { key: u.id, className: "item small" }, u.fullName || u.email);
+            })
+          ),
+          (participantsWaitlist.length > 0 && currentUser && currentUser.role === "Organizer") && e(
+            "div",
+            { className: "section" },
+            e(
+               "div", 
+               { 
+                   style: { display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" },
+                   onClick: function() { setShowWaitlist(!showWaitlist); }
+               },
+               e(
+                   "div",
+                   { style: { display: "flex", alignItems: "center", gap: 8 } },
+                   e("h2", { className: "section-title", style: { marginBottom: 0 } }, "Waitlist (" + participantsWaitlist.length + ")"),
+                   e("span", { style: { fontSize: "0.8em", color: "#6b7280" } }, showWaitlist ? "\u25BC" : "\u25B6")
+               )
+            ),
+            showWaitlist && participantsWaitlist.map(function(u) {
+               return e("div", { key: u.id, className: "item small" }, u.fullName || u.email);
+            })
+          ),
+          renderMatchesSection(canEdit),
+          canEdit &&
+            e(
+              "div",
+              { className: "section" },
+              e(
+                "div",
+                {
+                  style: {
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 8
+                  }
+                },
+                e(
+                  "h2",
+                  { className: "section-title" },
+                  "Edit tournament"
+                ),
+                e(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: function () {
+                      setEditing(!editing);
+                    },
+                    style: {
+                      padding: 6,
+                      borderRadius: 6,
+                      border: "1px solid #d1d5db",
+                      background: "#ffffff",
+                      fontSize: 12
+                    }
+                  },
+                  editing ? "Cancel" : "Edit"
+                )
+              ),
+              editing &&
+                e(
+                  "form",
+                  { onSubmit: handleSaveTournament },
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Name"),
+                    e("input", {
+                      type: "text",
+                      value: editName,
+                      onChange: function (ev) { setEditName(ev.target.value); },
+                      style: {
+                        width: "100%",
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        boxSizing: "border-box"
+                      }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e(
+                      "label",
+                      { className: "small" },
+                      "Description"
+                    ),
+                    e("textarea", {
+                      value: editDescription,
+                      onChange: function (ev) {
+                        setEditDescription(ev.target.value);
+                      },
+                      rows: 3,
+                      style: {
+                        width: "100%",
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        boxSizing: "border-box",
+                        resize: "vertical"
+                      }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Type"),
+                    e("select", {
+                       value: editType,
+                       onChange: function(ev) { setEditType(ev.target.value); },
+                       style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                    },
+                       e("option", { value: "Singles" }, "Singles"),
+                       e("option", { value: "Doubles" }, "Doubles (Pairs)")
+                    )
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Format"),
+                    e("select", {
+                       value: editFormat,
+                       onChange: function(ev) { 
+                           var val = ev.target.value;
+                           setEditFormat(val);
+                           var modes = FORMAT_MODES[val] || [];
+                           if (modes.length > 0) setEditSchedulingMode(modes[0].value);
+                       },
+                       style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                    },
+                       tournamentFormats.map(function(f) {
+                          return e("option", { key: f, value: f }, f);
+                       })
+                    )
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Scheduling Mode"),
+                    e("select", {
+                       value: editSchedulingMode,
+                       onChange: function(ev) { setEditSchedulingMode(ev.target.value); },
+                       style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                    },
+                       (FORMAT_MODES[editFormat] || []).map(function(m) {
+                           return e("option", { key: m.value, value: m.value }, m.label);
+                       })
+                    )
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Start date and time"),
+                    e(DateTimeInput, {
+                      value: editStartDate,
+                      onChange: function (val) { setEditStartDate(val); }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Duration (minutes)"),
+                    e("input", {
+                      type: "number",
+                      min: 0,
+                      value: editDurationMinutes,
+                      onChange: function (ev) { setEditDurationMinutes(ev.target.value); },
+                      style: {
+                        width: "100%",
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        boxSizing: "border-box"
+                      }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8, display: "flex", gap: 8 } },
+                    e("div", { style: { flex: 1 } },
+                      e("label", { className: "small" }, "Round Duration (min)"),
+                      e("input", {
+                        type: "number",
+                        min: 0,
+                        value: editRoundDurationMinutes,
+                        onChange: function (ev) { setEditRoundDurationMinutes(ev.target.value); },
+                        style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                      })
+                    ),
+                    e("div", { style: { flex: 1 } },
+                      e("label", { className: "small" }, "Break Time (min)"),
+                      e("input", {
+                        type: "number",
+                        min: 0,
+                        value: editBreakTimeMinutes,
+                        onChange: function (ev) { setEditBreakTimeMinutes(ev.target.value); },
+                        style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                      })
+                    )
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Number of Rounds (Calculated Max)"),
+                    e("input", {
+                      type: "number",
+                      min: 1,
+                      value: editRoundsCount,
+                      placeholder: "Auto-calculated",
+                      onChange: function (ev) { 
+                          var val = Number(ev.target.value);
+                          var dur = Number(editDurationMinutes);
+                          var roundDur = Number(editRoundDurationMinutes);
+                          var breakTime = Number(editBreakTimeMinutes) || 0;
+                          var max = 100;
+                          if (dur && roundDur && (roundDur + breakTime > 0)) {
+                              max = Math.floor((dur + breakTime) / (roundDur + breakTime));
+                          }
+                          if (val <= max) {
+                              setEditRoundsCount(ev.target.value); 
+                          }
+                      },
+                      style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Max participants (0 = no limit)"),
+                    e("input", {
+                      type: "number",
+                      min: 0,
+                      value: editMaxParticipants,
+                      onChange: function (ev) { setEditMaxParticipants(ev.target.value); },
+                      style: {
+                        width: "100%",
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        boxSizing: "border-box"
+                      }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e(
+                      "label",
+                      { className: "small" },
+                      "Courts count"
+                    ),
+                    e("input", {
+                      type: "number",
+                      min: 0,
+                      value: editCourtsCount,
+                      onChange: function (ev) {
+                        setEditCourtsCount(ev.target.value);
+                      },
+                      style: {
+                        width: "100%",
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        boxSizing: "border-box"
+                      }
+                    })
+                  ),
+                  e(
+                    "button",
+                    {
+                      type: "submit",
+                      disabled: saving,
+                      style: {
+                        width: "100%",
+                        padding: 10,
+                        borderRadius: 6,
+                        border: "none",
+                        background: "#111827",
+                        color: "#f9fafb",
+                        fontWeight: 600
+                      }
+                    },
+                    saving ? "Saving..." : "Save changes"
+                  )
+                )
+            ),
+            currentUser.role === "Organizer" && e(
+                "div",
+                { className: "section", style: { marginTop: 16 } },
+                e("h2", { className: "section-title" }, "Organizer Actions"),
+                e("button", {
+                    type: "button",
+                    onClick: function() { handleCopyTournament(selectedTournament); },
+                    style: {
+                        width: "100%",
+                        padding: 10,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        background: "#fff",
+                        fontWeight: 500,
+                        cursor: "pointer"
+                    }
+                }, "Copy as new Tournament"),
+                (participantsConfirmed.length === 0 && participantsWaitlist.length === 0)
+                  ? e("button", {
+                      type: "button",
+                      onClick: handleDeleteTournament,
+                      style: {
+                          width: "100%",
+                          padding: 10,
+                          marginTop: 8,
+                          borderRadius: 6,
+                          border: "1px solid #f87171",
+                          background: "#fff",
+                          color: "#b91c1c",
+                          fontWeight: 500,
+                          cursor: "pointer"
+                      }
+                  }, "Delete Tournament")
+                  : e("div", { style: { marginTop: 8, fontSize: 12, color: "#6b7280", textAlign: "center" } }, "Cannot delete: Tournament has participants")
+            )
+        );
+      }
+
+      if (!currentUser) {
+        return renderAuth();
+      }
+
+      return e(
+        "div",
+        { className: "app" },
+        e(
+          "div",
+          { className: "app-header" },
+          e("span", null, "Pickleball"),
+          e(
+            "div",
+            { style: { display: "flex", alignItems: "center", gap: 8 } },
+            loading
+              ? e("span", { className: "small" }, "Loading...")
+              : e(
+                  "span",
+                  { className: "small" },
+                  currentUser.fullName || currentUser.email
+                ),
+            e(
+              "button",
+              {
+                type: "button",
+                onClick: handleLogout,
+                style: {
+                  padding: "4px 8px",
+                  borderRadius: 999,
+                  border: "1px solid #f87171",
+                  background: "#ffffff",
+                  color: "#b91c1c",
+                  fontSize: 11,
+                  cursor: "pointer"
+                }
+              },
+              "Logout"
+            )
+          )
+        ),
+        e(
+          "div",
+          { className: "app-content" },
+          error &&
+            e(
+              "div",
+              { className: "error" },
+              error
+            ),
+          view === "home" && renderHome(),
+          view === "rankings" && renderRankings(),
+          view === "tournaments" && renderTournaments(),
+          view === "createTournament" && renderCreateTournamentScreen(),
+          view === "tournamentDetails" && renderTournamentDetails(),
+          view === "profile" && renderProfile()
+        ),
+        e(
+          "div",
+          { className: "tabs" },
+          e(
+            "button",
+            {
+              type: "button",
+              className: "tab" + (view === "home" ? " tab-active" : ""),
+              onClick: function () {
+                setView("home");
+              }
+            },
+            e("span", { className: "tab-label" }, "Home")
+          ),
+          e(
+            "button",
+            {
+              type: "button",
+              className: "tab" + (view === "rankings" ? " tab-active" : ""),
+              onClick: function () {
+                setView("rankings");
+              }
+            },
+            e("span", { className: "tab-label" }, "Rankings")
+          ),
+          e(
+            "button",
+            {
+              type: "button",
+              className:
+                "tab" + (view === "tournaments" ? " tab-active" : ""),
+              onClick: function () {
+                setView("tournaments");
+              }
+            },
+            e("span", { className: "tab-label" }, "Tournaments")
+          ),
+          e(
+              "button",
+              {
+                type: "button",
+                className:
+                  "tab" + (view === "profile" ? " tab-active" : ""),
+                onClick: function () {
+                  handleOpenProfile(currentUser);
+                }
+              },
+              e("span", { className: "tab-label" }, "Profile")
+            )
+        )
+      );
+    }
+
+    var rootElement = document.getElementById("root");
+    var root = ReactDOM.createRoot(rootElement);
+    root.render(e(App));
+  </script>
+</body>
+</html>

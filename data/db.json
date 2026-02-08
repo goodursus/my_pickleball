@@ -1,0 +1,888 @@
+{
+  "users": [
+    {
+      "id": "u_admin_001",
+      "email": "admin@pickleapp.com",
+      "password": "Admin123!",
+      "fullName": "Admin Updated",
+      "role": "Organizer",
+      "location": {
+        "city": "Waitara",
+        "country": "Australia"
+      },
+      "skillLevel": "Pro",
+      "preferredNotificationChannel": "None",
+      "recentMatchesCount": 5,
+      "phone": ""
+    },
+    {
+      "id": "u_player_002",
+      "email": "bob.player@pickleapp.com",
+      "password": "Player123!",
+      "fullName": "Bob Player",
+      "role": "Player",
+      "location": {
+        "city": "Miami",
+        "country": "USA"
+      },
+      "skillLevel": "Intermediate",
+      "preferredNotificationChannel": "None"
+    },
+    {
+      "id": "u_player_003",
+      "email": "carol.player@pickleapp.com",
+      "password": "Player123!",
+      "fullName": "Carol Player",
+      "role": "Player",
+      "location": {
+        "city": "Fort Lauderdale",
+        "country": "USA"
+      },
+      "skillLevel": "Beginner",
+      "preferredNotificationChannel": "None"
+    },
+    {
+      "id": "u_player_gen_1",
+      "email": "player1@test.com",
+      "password": "password",
+      "fullName": "Player 1",
+      "role": "Player",
+      "location": {
+        "city": "Test City",
+        "country": "Testland"
+      },
+      "skillLevel": "Beginner",
+      "preferredNotificationChannel": "None",
+      "recentMatchesCount": 5,
+      "phone": ""
+    },
+    {
+      "id": "u_player_gen_2",
+      "email": "player2@test.com",
+      "password": "password",
+      "fullName": "Player 2",
+      "role": "Player",
+      "location": {
+        "city": "Test City",
+        "country": "Testland"
+      },
+      "skillLevel": "Beginner",
+      "preferredNotificationChannel": "None",
+      "recentMatchesCount": 5,
+      "phone": ""
+    },
+    {
+      "id": "u_player_gen_3",
+      "email": "player3@test.com",
+      "password": "password",
+      "fullName": "Player 3",
+      "role": "Player",
+      "location": {
+        "city": "Test City",
+        "country": "Testland"
+      },
+      "skillLevel": "Beginner",
+      "preferredNotificationChannel": "None",
+      "recentMatchesCount": 5,
+      "phone": ""
+    },
+    {
+      "id": "u_player_gen_4",
+      "email": "player4@test.com",
+      "password": "password",
+      "fullName": "Player 4",
+      "role": "Player",
+      "location": {
+        "city": "Test City",
+        "country": "Testland"
+      },
+      "skillLevel": "Beginner",
+      "preferredNotificationChannel": "None",
+      "recentMatchesCount": 5,
+      "phone": ""
+    },
+    {
+      "id": "u_player_gen_5",
+      "email": "player5@test.com",
+      "password": "password",
+      "fullName": "Player 5",
+      "role": "Player",
+      "location": {
+        "city": "Test City",
+        "country": "Testland"
+      },
+      "skillLevel": "Beginner",
+      "preferredNotificationChannel": "None",
+      "recentMatchesCount": 5,
+      "phone": ""
+    },
+    {
+      "id": "u_player_gen_6",
+      "email": "player6@test.com",
+      "password": "password",
+      "fullName": "Player 6",
+      "role": "Player",
+      "location": {
+        "city": "Test City",
+        "country": "Testland"
+      },
+      "skillLevel": "Beginner",
+      "preferredNotificationChannel": "None",
+      "recentMatchesCount": 5,
+      "phone": ""
+    },
+    {
+      "id": "u_player_gen_7",
+      "email": "player7@test.com",
+      "password": "password",
+      "fullName": "Player 7",
+      "role": "Player",
+      "location": {
+        "city": "Test City",
+        "country": "Testland"
+      },
+      "skillLevel": "Beginner",
+      "preferredNotificationChannel": "None",
+      "recentMatchesCount": 5,
+      "phone": ""
+    },
+    {
+      "id": "u_player_gen_8",
+      "email": "player8@test.com",
+      "password": "password",
+      "fullName": "Player 8",
+      "role": "Player",
+      "location": {
+        "city": "Test City",
+        "country": "Testland"
+      },
+      "skillLevel": "Beginner",
+      "preferredNotificationChannel": "None",
+      "recentMatchesCount": 5,
+      "phone": ""
+    },
+    {
+      "id": "u_player_gen_9",
+      "email": "player9@test.com",
+      "password": "password",
+      "fullName": "Player 9",
+      "role": "Player",
+      "location": {
+        "city": "Test City",
+        "country": "Testland"
+      },
+      "skillLevel": "Beginner",
+      "preferredNotificationChannel": "None",
+      "recentMatchesCount": 5,
+      "phone": ""
+    },
+    {
+      "id": "u_player_gen_10",
+      "email": "player10@test.com",
+      "password": "password",
+      "fullName": "Player 10",
+      "role": "Player",
+      "location": {
+        "city": "Test City",
+        "country": "Testland"
+      },
+      "skillLevel": "Beginner",
+      "preferredNotificationChannel": "None",
+      "recentMatchesCount": 5,
+      "phone": ""
+    },
+    {
+      "id": "u_014",
+      "email": "vetursus@gmail.com",
+      "password": "123",
+      "fullName": "Ursus",
+      "role": "Player",
+      "location": null,
+      "skillLevel": "Advanced",
+      "preferredNotificationChannel": "Email",
+      "recentMatchesCount": 5,
+      "phone": null
+    },
+    {
+      "id": "u_015",
+      "email": "goodursus@gmail.com",
+      "password": "123",
+      "fullName": "Good Ursus",
+      "role": "Player",
+      "location": null,
+      "skillLevel": "Intermediate",
+      "preferredNotificationChannel": "None",
+      "recentMatchesCount": 5,
+      "phone": null
+    }
+  ],
+  "tournaments": [
+    {
+      "id": "t_001",
+      "name": "Wednesday 11-02-26",
+      "description": "",
+      "location": null,
+      "startDate": "2026-02-06T08:24:06.335Z",
+      "endDate": null,
+      "durationMinutes": 120,
+      "courtsCount": 2,
+      "maxParticipants": 10,
+      "roundsCount": 5,
+      "roundDurationMinutes": null,
+      "breakTimeMinutes": 0,
+      "type": "Doubles",
+      "schedulingMode": "shuffle",
+      "currentRound": 0,
+      "roundStartTime": null,
+      "format": "Round Robin",
+      "status": "Completed",
+      "registrationOpenAt": null,
+      "registrationCloseAt": null,
+      "createdBy": "u_admin_001",
+      "courtProgress": {
+        "1": {
+          "currentRound": 5,
+          "status": "in_progress"
+        },
+        "2": {
+          "currentRound": 5,
+          "status": "in_progress"
+        }
+      }
+    },
+    {
+      "id": "t_002",
+      "name": "Monday 09-02-26",
+      "description": "",
+      "location": null,
+      "startDate": "2026-02-09T09:00",
+      "endDate": null,
+      "durationMinutes": 10,
+      "courtsCount": 2,
+      "maxParticipants": 12,
+      "roundsCount": 3,
+      "roundDurationMinutes": 1,
+      "breakTimeMinutes": 3,
+      "type": "Doubles",
+      "schedulingMode": "waterfall",
+      "currentRound": 3,
+      "roundStartTime": null,
+      "format": "Round Robin",
+      "status": "Completed",
+      "registrationOpenAt": null,
+      "registrationCloseAt": null,
+      "createdBy": "u_admin_001"
+    },
+    {
+      "id": "t_003",
+      "name": "Monday 16-02-26",
+      "description": "",
+      "location": null,
+      "startDate": "2026-02-07T11:35:13.916Z",
+      "endDate": null,
+      "durationMinutes": 10,
+      "courtsCount": 2,
+      "maxParticipants": 10,
+      "roundsCount": 3,
+      "roundDurationMinutes": null,
+      "breakTimeMinutes": 3,
+      "type": "Doubles",
+      "schedulingMode": "shuffle",
+      "currentRound": 0,
+      "roundStartTime": null,
+      "format": "Round Robin",
+      "status": "In Progress",
+      "registrationOpenAt": null,
+      "registrationCloseAt": null,
+      "createdBy": "u_admin_001",
+      "courtProgress": {
+        "1": {
+          "currentRound": 0,
+          "status": "ready"
+        },
+        "2": {
+          "currentRound": 0,
+          "status": "ready"
+        }
+      }
+    }
+  ],
+  "tournamentEntries": [
+    {
+      "id": "te_002",
+      "tournamentId": "t_001",
+      "userId": "u_015",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_006",
+      "tournamentId": "t_001",
+      "userId": "u_player_gen_2",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_010",
+      "tournamentId": "t_001",
+      "userId": "u_player_gen_9",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_003",
+      "tournamentId": "t_001",
+      "userId": "u_014",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_001",
+      "tournamentId": "t_001",
+      "userId": "u_admin_001",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_004",
+      "tournamentId": "t_001",
+      "userId": "u_player_gen_5",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_009",
+      "tournamentId": "t_001",
+      "userId": "u_player_gen_10",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_008",
+      "tournamentId": "t_001",
+      "userId": "u_player_003",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_005",
+      "tournamentId": "t_001",
+      "userId": "u_player_gen_8",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_007",
+      "tournamentId": "t_001",
+      "userId": "u_player_gen_6",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_011",
+      "tournamentId": "t_001",
+      "userId": "u_player_gen_7",
+      "status": "waitlist"
+    },
+    {
+      "id": "te_012",
+      "tournamentId": "t_001",
+      "userId": "u_player_gen_1",
+      "status": "waitlist"
+    },
+    {
+      "id": "te_013",
+      "tournamentId": "t_001",
+      "userId": "u_player_002",
+      "status": "waitlist"
+    },
+    {
+      "id": "te_014",
+      "tournamentId": "t_002",
+      "userId": "u_admin_001",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_015",
+      "tournamentId": "t_002",
+      "userId": "u_015",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_016",
+      "tournamentId": "t_002",
+      "userId": "u_player_003",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_017",
+      "tournamentId": "t_002",
+      "userId": "u_014",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_018",
+      "tournamentId": "t_002",
+      "userId": "u_player_gen_4",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_019",
+      "tournamentId": "t_002",
+      "userId": "u_player_gen_10",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_020",
+      "tournamentId": "t_002",
+      "userId": "u_player_gen_8",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_021",
+      "tournamentId": "t_002",
+      "userId": "u_player_gen_6",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_022",
+      "tournamentId": "t_002",
+      "userId": "u_player_gen_7",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_023",
+      "tournamentId": "t_002",
+      "userId": "u_player_gen_3",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_024",
+      "tournamentId": "t_002",
+      "userId": "u_player_gen_5",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_025",
+      "tournamentId": "t_002",
+      "userId": "u_player_gen_2",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_026",
+      "tournamentId": "t_002",
+      "userId": "u_player_gen_1",
+      "status": "waitlist"
+    },
+    {
+      "id": "te_027",
+      "tournamentId": "t_002",
+      "userId": "u_player_gen_9",
+      "status": "waitlist"
+    },
+    {
+      "id": "te_028",
+      "tournamentId": "t_002",
+      "userId": "u_player_002",
+      "status": "waitlist"
+    },
+    {
+      "id": "te_029",
+      "tournamentId": "t_003",
+      "userId": "u_015",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_031",
+      "tournamentId": "t_003",
+      "userId": "u_admin_001",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_032",
+      "tournamentId": "t_003",
+      "userId": "u_player_gen_6",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_033",
+      "tournamentId": "t_003",
+      "userId": "u_player_gen_2",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_034",
+      "tournamentId": "t_003",
+      "userId": "u_player_gen_10",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_035",
+      "tournamentId": "t_003",
+      "userId": "u_player_gen_1",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_036",
+      "tournamentId": "t_003",
+      "userId": "u_player_gen_8",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_037",
+      "tournamentId": "t_003",
+      "userId": "u_player_gen_4",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_038",
+      "tournamentId": "t_003",
+      "userId": "u_player_002",
+      "status": "confirmed"
+    },
+    {
+      "id": "te_040",
+      "tournamentId": "t_003",
+      "userId": "u_player_gen_3",
+      "status": "waitlist"
+    },
+    {
+      "id": "te_041",
+      "tournamentId": "t_003",
+      "userId": "u_player_gen_9",
+      "status": "waitlist"
+    },
+    {
+      "id": "te_040",
+      "tournamentId": "t_003",
+      "userId": "u_014",
+      "status": "confirmed"
+    }
+  ],
+  "matches": [
+    {
+      "id": "m_t_001_1",
+      "tournamentId": "t_001",
+      "player1Id": "u_admin_001",
+      "partner1Id": "u_014",
+      "player2Id": "u_015",
+      "partner2Id": "u_player_gen_2",
+      "score1": 7,
+      "score2": 11,
+      "status": "completed",
+      "round": 1,
+      "court": 1,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_001_2",
+      "tournamentId": "t_001",
+      "player1Id": "u_player_gen_5",
+      "partner1Id": "u_player_gen_10",
+      "player2Id": "u_player_003",
+      "partner2Id": "u_player_gen_8",
+      "score1": 7,
+      "score2": 11,
+      "status": "completed",
+      "round": 1,
+      "court": 2,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_001_3",
+      "tournamentId": "t_001",
+      "player1Id": "u_admin_001",
+      "partner1Id": "u_015",
+      "player2Id": "u_014",
+      "partner2Id": "u_player_gen_9",
+      "score1": 11,
+      "score2": 4,
+      "status": "completed",
+      "round": 2,
+      "court": 1,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_001_4",
+      "tournamentId": "t_001",
+      "player1Id": "u_player_gen_5",
+      "partner1Id": "u_player_003",
+      "player2Id": "u_player_gen_10",
+      "partner2Id": "u_player_gen_6",
+      "score1": 12,
+      "score2": 10,
+      "status": "completed",
+      "round": 2,
+      "court": 2,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_001_5",
+      "tournamentId": "t_001",
+      "player1Id": "u_admin_001",
+      "partner1Id": "u_player_gen_2",
+      "player2Id": "u_015",
+      "partner2Id": "u_player_gen_9",
+      "score1": 11,
+      "score2": 6,
+      "status": "completed",
+      "round": 3,
+      "court": 1,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_001_6",
+      "tournamentId": "t_001",
+      "player1Id": "u_player_gen_5",
+      "partner1Id": "u_player_gen_8",
+      "player2Id": "u_player_003",
+      "partner2Id": "u_player_gen_6",
+      "score1": 11,
+      "score2": 5,
+      "status": "completed",
+      "round": 3,
+      "court": 2,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_001_7",
+      "tournamentId": "t_001",
+      "player1Id": "u_admin_001",
+      "partner1Id": "u_player_gen_9",
+      "player2Id": "u_014",
+      "partner2Id": "u_player_gen_2",
+      "score1": 11,
+      "score2": 9,
+      "status": "completed",
+      "round": 4,
+      "court": 1,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_001_8",
+      "tournamentId": "t_001",
+      "player1Id": "u_player_gen_5",
+      "partner1Id": "u_player_gen_6",
+      "player2Id": "u_player_gen_10",
+      "partner2Id": "u_player_gen_8",
+      "score1": 11,
+      "score2": 8,
+      "status": "completed",
+      "round": 4,
+      "court": 2,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_001_9",
+      "tournamentId": "t_001",
+      "player1Id": "u_014",
+      "partner1Id": "u_015",
+      "player2Id": "u_player_gen_2",
+      "partner2Id": "u_player_gen_9",
+      "score1": 5,
+      "score2": 11,
+      "status": "completed",
+      "round": 5,
+      "court": 1,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_001_10",
+      "tournamentId": "t_001",
+      "player1Id": "u_player_gen_10",
+      "partner1Id": "u_player_003",
+      "player2Id": "u_player_gen_8",
+      "partner2Id": "u_player_gen_6",
+      "score1": 9,
+      "score2": 11,
+      "status": "completed",
+      "round": 5,
+      "court": 2,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_002_1",
+      "tournamentId": "t_002",
+      "player1Id": "u_player_gen_8",
+      "partner1Id": "u_014",
+      "player2Id": "u_player_gen_3",
+      "partner2Id": "u_player_gen_2",
+      "score1": 5,
+      "score2": 7,
+      "status": "completed",
+      "round": 1,
+      "court": 1,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_002_2",
+      "tournamentId": "t_002",
+      "player1Id": "u_player_gen_6",
+      "partner1Id": "u_admin_001",
+      "player2Id": "u_player_gen_10",
+      "partner2Id": "u_player_gen_7",
+      "score1": 7,
+      "score2": 5,
+      "status": "completed",
+      "round": 1,
+      "court": 2,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_002_3",
+      "tournamentId": "t_002",
+      "player1Id": "u_015",
+      "partner1Id": "u_player_gen_5",
+      "player2Id": "u_player_003",
+      "partner2Id": "u_player_gen_4",
+      "score1": 7,
+      "score2": 9,
+      "status": "completed",
+      "round": 2,
+      "court": 1,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_002_4",
+      "tournamentId": "t_002",
+      "player1Id": "u_admin_001",
+      "partner1Id": "u_player_gen_2",
+      "player2Id": "u_player_gen_6",
+      "partner2Id": "u_player_gen_3",
+      "score1": 12,
+      "score2": 6,
+      "status": "completed",
+      "round": 2,
+      "court": 2,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_002_5",
+      "tournamentId": "t_002",
+      "player1Id": "u_player_003",
+      "partner1Id": "u_player_gen_5",
+      "player2Id": "u_player_gen_4",
+      "partner2Id": "u_015",
+      "score1": 11,
+      "score2": 7,
+      "status": "completed",
+      "round": 3,
+      "court": 1,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_002_6",
+      "tournamentId": "t_002",
+      "player1Id": "u_014",
+      "partner1Id": "u_player_gen_7",
+      "player2Id": "u_player_gen_10",
+      "partner2Id": "u_player_gen_8",
+      "score1": 6,
+      "score2": 10,
+      "status": "completed",
+      "round": 3,
+      "court": 2,
+      "pendingScore1": null,
+      "pendingScore2": null,
+      "submittedBy": null
+    },
+    {
+      "id": "m_t_003_1",
+      "tournamentId": "t_003",
+      "player1Id": "u_admin_001",
+      "partner1Id": "u_014",
+      "player2Id": "u_015",
+      "partner2Id": "u_player_002",
+      "score1": null,
+      "score2": null,
+      "status": "scheduled",
+      "round": 1,
+      "court": 1
+    },
+    {
+      "id": "m_t_003_2",
+      "tournamentId": "t_003",
+      "player1Id": "u_player_gen_8",
+      "partner1Id": "u_player_gen_6",
+      "player2Id": "u_player_gen_4",
+      "partner2Id": "u_player_gen_1",
+      "score1": null,
+      "score2": null,
+      "status": "scheduled",
+      "round": 1,
+      "court": 2
+    },
+    {
+      "id": "m_t_003_3",
+      "tournamentId": "t_003",
+      "player1Id": "u_admin_001",
+      "partner1Id": "u_015",
+      "player2Id": "u_014",
+      "partner2Id": "u_player_gen_2",
+      "score1": null,
+      "score2": null,
+      "status": "scheduled",
+      "round": 2,
+      "court": 1
+    },
+    {
+      "id": "m_t_003_4",
+      "tournamentId": "t_003",
+      "player1Id": "u_player_gen_8",
+      "partner1Id": "u_player_gen_4",
+      "player2Id": "u_player_gen_6",
+      "partner2Id": "u_player_gen_10",
+      "score1": null,
+      "score2": null,
+      "status": "scheduled",
+      "round": 2,
+      "court": 2
+    },
+    {
+      "id": "m_t_003_5",
+      "tournamentId": "t_003",
+      "player1Id": "u_admin_001",
+      "partner1Id": "u_player_002",
+      "player2Id": "u_015",
+      "partner2Id": "u_player_gen_2",
+      "score1": null,
+      "score2": null,
+      "status": "scheduled",
+      "round": 3,
+      "court": 1
+    },
+    {
+      "id": "m_t_003_6",
+      "tournamentId": "t_003",
+      "player1Id": "u_player_gen_8",
+      "partner1Id": "u_player_gen_1",
+      "player2Id": "u_player_gen_4",
+      "partner2Id": "u_player_gen_10",
+      "score1": null,
+      "score2": null,
+      "status": "scheduled",
+      "round": 3,
+      "court": 2
+    }
+  ]
+}
