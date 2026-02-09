@@ -6,6 +6,7 @@ const nodemailer = require("nodemailer");
 // we will just log the email details to the console if SMTP is not configured.
 // Ideally, the user would provide SMTP_HOST, SMTP_USER, etc. in environment variables.
 
+// --- GMAIL CONFIGURATION ---
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -14,13 +15,29 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+// --- BREVO (SENDINBLUE) CONFIGURATION (Disabled) ---
+// const transporter = nodemailer.createTransport({
+//     host: process.env.SMTP_HOST,
+//     port: Number(process.env.SMTP_PORT),
+//     secure: false, 
+//     auth: {
+//         user: process.env.SMTP_USER,
+//         pass: process.env.SMTP_PASS
+//     }
+// });
+
 async function sendEmail(to, subject, text, html) {
     try {
         console.log(`[Email Service] Sending email to ${to}...`);
         
+        // Use SMTP_USER as sender to satisfy Brevo requirements (must match auth user)
+        // If you have a custom domain, change this to "info@yourdomain.com"
+        const sender = `"Pickleball App" <${process.env.SMTP_USER}>`;
+
         const info = await transporter.sendMail({
-            from: `"Pickleball App" <${process.env.SMTP_USER}>`,
+            from: sender,
             to: to,
+            replyTo: process.env.SMTP_USER, // Replies go here
             subject: subject,
             text: text,
             html: html
