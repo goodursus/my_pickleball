@@ -6,38 +6,40 @@ const nodemailer = require("nodemailer");
 // we will just log the email details to the console if SMTP is not configured.
 // Ideally, the user would provide SMTP_HOST, SMTP_USER, etc. in environment variables.
 
-// --- GMAIL CONFIGURATION ---
+// --- MAILJET CONFIGURATION ---
+// Host: in-v3.mailjet.com
+// Port: 587
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: false, // TLS
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
     }
 });
 
-// --- BREVO (SENDINBLUE) CONFIGURATION (Disabled) ---
-// const transporter = nodemailer.createTransport({
-//     host: process.env.SMTP_HOST,
-//     port: Number(process.env.SMTP_PORT),
-//     secure: false, 
-//     auth: {
-//         user: process.env.SMTP_USER,
-//         pass: process.env.SMTP_PASS
-//     }
-// });
-
 async function sendEmail(to, subject, text, html) {
     try {
         console.log(`[Email Service] Sending email to ${to}...`);
         
-        // Use SMTP_USER as sender to satisfy Brevo requirements (must match auth user)
-        // If you have a custom domain, change this to "info@yourdomain.com"
-        const sender = `"Pickleball App" <${process.env.SMTP_USER}>`;
+        // Mailjet requires the "From" address to be a verified sender in their dashboard.
+        // Usually, this is the email you signed up with.
+        // We assume you verified 'veteranpickle@gmail.com' (or similar).
+        // Using a hardcoded sender for safety if SMTP_USER is the API Key (which it is for Mailjet).
+        // WARNING: You must replace 'veteranpickle@gmail.com' below with YOUR VERIFIED MAILJET SENDER EMAIL
+        // if SMTP_USER is an API key (which is NOT an email).
+        
+        // Let's try to use a specific env var for sender, or fallback to a hardcoded one if you prefer.
+        // For now, I will use a new env var SENDER_EMAIL if it exists, otherwise I'll try to guess.
+        // Since Mailjet SMTP_USER is an API Key (e.g. "a1b2..."), we CANNOT use it as the "From" address.
+        
+        const senderEmail = process.env.SENDER_EMAIL || "veteranpickle@gmail.com"; 
 
         const info = await transporter.sendMail({
-            from: sender,
+            from: `"Pickleball App" <${senderEmail}>`,
             to: to,
-            replyTo: process.env.SMTP_USER, // Replies go here
+            replyTo: senderEmail,
             subject: subject,
             text: text,
             html: html
