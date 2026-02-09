@@ -14,7 +14,8 @@ const userSchema = new mongoose.Schema({
   skillLevel: { type: String, default: 'Beginner' },
   preferredNotificationChannel: { type: String, default: 'None' },
   recentMatchesCount: { type: Number, default: 5 },
-  phone: String
+  phone: String,
+  telegramChatId: String
 }, { timestamps: true });
 
 const tournamentSchema = new mongoose.Schema({

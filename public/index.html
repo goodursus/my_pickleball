@@ -826,11 +826,12 @@
             email: authEmail,
             password: authPassword,
             fullName: authFullName,
-            location: (authCity || authCountry) ? ((authCity || "") + (authCity && authCountry ? ", " : "") + (authCountry || "")) : null,
+            location: { city: authCity, country: authCountry },
             skillLevel: authSkillLevel,
             preferredNotificationChannel: authNotification,
             recentMatchesCount: Number(authMatchesCount) || 5,
-            phone: authPhone
+            phone: authPhone,
+            telegramChatId: authTelegramChatId
           })
         })
           .then(function (res) {
@@ -1634,26 +1635,12 @@
                       }
                     })
                   ),
-
-
-
-
-
-
                   e(
                     "button",
                     {
                       type: "submit",
                       disabled: loading,
-                      style: {
-                        width: "100%",
-                        padding: 10,
-                        borderRadius: 6,
-                        border: "none",
-                        background: "#111827",
-                        color: "#f9fafb",
-                        fontWeight: 600
-                      }
+                      style: { width: "100%", padding: 10, borderRadius: 6, border: "none", background: "#111827", color: "#f9fafb", fontWeight: 600 }
                     },
                     loading ? "Signing in..." : "Login"
                   ),
@@ -1662,16 +1649,7 @@
                     {
                       type: "button",
                       onClick: handleUseDemoAdmin,
-                      style: {
-                        width: "100%",
-                        padding: 8,
-                        borderRadius: 6,
-                        border: "none",
-                        background: "transparent",
-                        color: "#111827",
-                        fontSize: 12,
-                        marginTop: 4
-                      }
+                      style: { width: "100%", padding: 8, borderRadius: 6, border: "none", background: "transparent", color: "#111827", fontSize: 12, marginTop: 4 }
                     },
                     "Use demo admin"
                   )
@@ -1683,35 +1661,7 @@
                   e(
                     "div",
                     { style: { marginBottom: 8 } },
-                    e(
-                      "label",
-                      { className: "small" },
-                      "Full name"
-                    ),
-                    e("input", {
-                      type: "text",
-                      required: true,
-                      value: authFullName,
-                      onChange: function (ev) {
-                        setAuthFullName(ev.target.value);
-                      },
-                      style: {
-                        width: "100%",
-                        padding: 8,
-                        borderRadius: 6,
-                        border: "1px solid #d1d5db",
-                        boxSizing: "border-box"
-                      }
-                    })
-                  ),
-                  e(
-                    "div",
-                    { style: { marginBottom: 8 } },
-                    e(
-                      "label",
-                      { className: "small" },
-                      "Email"
-                    ),
+                    e("label", { className: "small" }, "Email *"),
                     e("input", {
                       type: "email",
                       required: true,
@@ -1731,11 +1681,7 @@
                   e(
                     "div",
                     { style: { marginBottom: 8 } },
-                    e(
-                      "label",
-                      { className: "small" },
-                      "Password"
-                    ),
+                    e("label", { className: "small" }, "Password *"),
                     e("input", {
                       type: "password",
                       required: true,
@@ -1755,24 +1701,43 @@
                   e(
                     "div",
                     { style: { marginBottom: 8 } },
-                    e("label", { className: "small" }, "City"),
+                    e("label", { className: "small" }, "Full Name *"),
                     e("input", {
                       type: "text",
-                      value: authCity,
-                      onChange: function(ev) { setAuthCity(ev.target.value); },
-                      style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                      required: true,
+                      value: authFullName,
+                      onChange: function (ev) {
+                        setAuthFullName(ev.target.value);
+                      },
+                      style: {
+                        width: "100%",
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        boxSizing: "border-box"
+                      }
                     })
                   ),
                   e(
                     "div",
                     { style: { marginBottom: 8 } },
-                    e("label", { className: "small" }, "Country"),
-                    e("input", {
-                      type: "text",
-                      value: authCountry,
-                      onChange: function(ev) { setAuthCountry(ev.target.value); },
-                      style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
-                    })
+                    e("label", { className: "small" }, "Location"),
+                    e("div", { style: { display: "flex", gap: "4px" } },
+                        e("input", {
+                          type: "text",
+                          placeholder: "City",
+                          value: authCity,
+                          onChange: function(ev) { setAuthCity(ev.target.value); },
+                          style: { flex: 1, padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                        }),
+                        e("input", {
+                          type: "text",
+                          placeholder: "Country",
+                          value: authCountry,
+                          onChange: function(ev) { setAuthCountry(ev.target.value); },
+                          style: { flex: 1, padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                        })
+                    )
                   ),
                   e(
                     "div",
@@ -1783,12 +1748,24 @@
                         onChange: function(ev) { setAuthSkillLevel(ev.target.value); },
                         style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
                     },
-                        e("option", { value: "Beginner" }, "Beginner"),
-                        e("option", { value: "Intermediate" }, "Intermediate"),
-                        e("option", { value: "Advanced" }, "Advanced"),
-                        e("option", { value: "Pro" }, "Pro"),
-                        e("option", { value: "Unknown" }, "Unknown")
+                        e("option", { value: "Beginner" }, "Beginner (1.0-2.5)"),
+                        e("option", { value: "Intermediate" }, "Intermediate (3.0-3.5)"),
+                        e("option", { value: "Advanced" }, "Advanced (4.0-4.5)"),
+                        e("option", { value: "Pro" }, "Pro (5.0+)")
                     )
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "Recent Matches to use for Rating"),
+                    e("input", {
+                      type: "number",
+                      min: "1",
+                      max: "50",
+                      value: authMatchesCount,
+                      onChange: function(ev) { setAuthMatchesCount(ev.target.value); },
+                      style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                    })
                   ),
                   e(
                     "div",
@@ -1800,8 +1777,9 @@
                         style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
                     },
                         e("option", { value: "None" }, "None"),
-                        e("option", { value: "Email" }, "Email"),
-                        e("option", { value: "WhatsApp" }, "WhatsApp")
+                        e("option", { value: "Email" }, "Email (dev)"),
+                        e("option", { value: "WhatsApp" }, "WhatsApp (dev)"),
+                        e("option", { value: "Telegram" }, "Telegram")
                     )
                   ),
                   e(
@@ -1817,17 +1795,18 @@
                       style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
                     })
                   ),
-                  e(
+                  authNotification === "Telegram" && e(
                     "div",
                     { style: { marginBottom: 8 } },
-                    e("label", { className: "small" }, "Recent Matches Count (to display)"),
+                    e("label", { className: "small" }, "Telegram Chat ID *"),
+                    e("div", { className: "small", style: { color: "#6b7280", marginBottom: 4 } }, "Start bot @YourBotName to get ID"),
                     e("input", {
-                        type: "number",
-                        min: 1,
-                        max: 20,
-                        value: authMatchesCount,
-                        onChange: function(ev) { setAuthMatchesCount(ev.target.value); },
-                        style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                      type: "text",
+                      required: true,
+                      value: authTelegramChatId,
+                      placeholder: "123456789",
+                      onChange: function(ev) { setAuthTelegramChatId(ev.target.value); },
+                      style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
                     })
                   ),
                   e(

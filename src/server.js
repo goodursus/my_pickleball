@@ -3,6 +3,7 @@ const express = require("express");
 const path = require("path");
 const mongoose = require("mongoose");
 const emailService = require("./emailService");
+const telegramService = require("./telegramService");
 const { User, Tournament, TournamentEntry, Match } = require("./models");
 
 const app = express();
@@ -254,16 +255,26 @@ app.patch("/users/:id", async (req, res) => {
         return res.status(403).json({ error: "Forbidden" });
     }
 
-    const { fullName, preferredNotificationChannel, recentMatchesCount, role, location, skillLevel, phone } = req.body;
+    const { fullName, preferredNotificationChannel, recentMatchesCount, role, location, skillLevel, phone, telegramChatId } = req.body;
 
     if (preferredNotificationChannel === "WhatsApp" && !phone && !targetUser.phone) {
          return res.status(400).json({ error: "Phone number is required for WhatsApp notifications" });
+    }
+    
+    if (preferredNotificationChannel === "Telegram" && !telegramChatId && !targetUser.telegramChatId) {
+         return res.status(400).json({ error: "Telegram Chat ID is required for Telegram notifications" });
     }
 
     if (fullName !== undefined) targetUser.fullName = fullName;
     if (preferredNotificationChannel !== undefined) targetUser.preferredNotificationChannel = preferredNotificationChannel;
     if (skillLevel !== undefined) targetUser.skillLevel = skillLevel;
     if (phone !== undefined) targetUser.phone = phone;
+    if (telegramChatId !== undefined) targetUser.telegramChatId = telegramChatId;
+    
+    // Welcome message if newly subscribing to Telegram
+    if (preferredNotificationChannel === "Telegram" && telegramChatId && telegramChatId !== targetUser.telegramChatId) {
+        telegramService.sendWelcome({ ...targetUser.toObject(), telegramChatId }).catch(console.error);
+    }
     
     if (location !== undefined) {
         targetUser.location = {
@@ -458,6 +469,7 @@ app.post("/tournaments", async (req, res) => {
     const allUsers = await User.find({});
     allUsers.forEach(u => {
         emailService.sendTournamentInvitation(u, tournament.toObject()).catch(err => console.error(`Failed to send invite to ${u.email}:`, err));
+        telegramService.sendTournamentInvitation(u, tournament.toObject()).catch(err => console.error(`Failed to send TG invite to ${u.email}:`, err));
     });
 
     res.status(201).json(tournament);
@@ -504,6 +516,8 @@ app.post("/tournaments/:id/join", async (req, res) => {
 
     emailService.sendTournamentRegistrationConfirmation(user, tournament.toObject(), entry.status)
         .catch(err => console.error("Failed to send registration confirmation:", err));
+    telegramService.sendRegistrationConfirmation(user, tournament.toObject(), entry.status)
+        .catch(err => console.error("Failed to send TG registration confirmation:", err));
 
     res.status(201).json(entry);
   } catch (err) {
@@ -540,12 +554,16 @@ app.post("/tournaments/:id/leave", async (req, res) => {
             if (luckyUser) {
                 emailService.sendTournamentRegistrationConfirmation(luckyUser, tournament.toObject(), "confirmed")
                   .catch(err => console.error("Failed to send promotion email:", err));
+                telegramService.sendRegistrationConfirmation(luckyUser, tournament.toObject(), "confirmed")
+                  .catch(err => console.error("Failed to send TG promotion:", err));
             }
         }
     }
 
     emailService.sendTournamentWithdrawalConfirmation(user, tournament.toObject())
         .catch(err => console.error("Failed to send withdrawal confirmation:", err));
+    telegramService.sendWithdrawalConfirmation(user, tournament.toObject())
+        .catch(err => console.error("Failed to send TG withdrawal confirmation:", err));
 
     res.json({ success: true });
   } catch (err) {
@@ -632,6 +650,8 @@ app.post("/tournaments/:id/fill-participants-random", async (req, res) => {
            // SEND EMAIL
            emailService.sendTournamentRegistrationConfirmation(ursus, tournament.toObject(), isWaitlist ? "waitlist" : "confirmed")
                .catch(err => console.error("Failed to send Ursus registration email:", err));
+           telegramService.sendRegistrationConfirmation(ursus, tournament.toObject(), isWaitlist ? "waitlist" : "confirmed")
+               .catch(err => console.error("Failed to send Ursus TG:", err));
        }
     }
 
@@ -668,6 +688,8 @@ app.post("/tournaments/:id/fill-participants-random", async (req, res) => {
         // SEND EMAIL
         emailService.sendTournamentRegistrationConfirmation(u, tournament.toObject(), status)
             .catch(err => console.error(`Failed to send random fill registration email to ${u.email}:`, err));
+        telegramService.sendRegistrationConfirmation(u, tournament.toObject(), status)
+            .catch(err => console.error(`Failed to send random fill TG to ${u.email}:`, err));
 
         if (status === "confirmed") {
             liveConfirmed++;
@@ -1091,7 +1113,10 @@ app.post("/tournaments/:id/start", async (req, res) => {
       const entries = await TournamentEntry.find({ tournamentId: t.id, status: { $ne: "waitlist" } });
       entries.forEach(async e => {
           const u = await User.findOne({ id: e.userId });
-          if (u) emailService.sendTournamentStatusUpdate(u, t.toObject(), "In Progress").catch(console.error);
+          if (u) {
+              emailService.sendTournamentStatusUpdate(u, t.toObject(), "In Progress").catch(console.error);
+              telegramService.sendStatusUpdate(u, t.toObject(), "In Progress").catch(console.error);
+          }
       });
 
       res.json(t);
@@ -1139,6 +1164,7 @@ app.post("/tournaments/:id/reset", async (req, res) => {
 
         usersToNotify.filter(Boolean).forEach(u => {
             emailService.sendTournamentStatusUpdate(u, t.toObject(), "Reset").catch(console.error);
+            telegramService.sendStatusUpdate(u, t.toObject(), "Reset").catch(console.error);
         });
 
         res.json({ message: "Reset", tournament: t });
@@ -1342,6 +1368,8 @@ async function sendTournamentCompletionEmails(tournament) {
             if (u) {
                 emailService.sendTournamentResults(u, tournament.toObject(), resultsText)
                     .catch(err => console.error(`Failed to send results to ${u.email}:`, err));
+                telegramService.sendResults(u, tournament.toObject(), resultsText)
+                    .catch(err => console.error(`Failed to send TG results to ${u.email}:`, err));
             }
         });
 
