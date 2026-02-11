@@ -15,7 +15,8 @@ const userSchema = new mongoose.Schema({
   preferredNotificationChannel: { type: String, default: 'None' },
   recentMatchesCount: { type: Number, default: 5 },
   phone: String,
-  telegramChatId: String
+  telegramChatId: String,
+  adminTelegramGroupId: String // New field
 }, { timestamps: true });
 
 const tournamentSchema = new mongoose.Schema({

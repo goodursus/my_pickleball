@@ -141,7 +141,7 @@
 
     function formatDate(dateStr) {
       if (!dateStr) return "TBD";
-      return new Date(dateStr).toLocaleString(undefined, {
+      return new Date(dateStr).toLocaleString("en-US", {
         year: "numeric",
         month: "numeric",
         day: "numeric",
@@ -263,6 +263,9 @@
       var _React$useStateAuthPhone = React.useState(""),
         authPhone = _React$useStateAuthPhone[0],
         setAuthPhone = _React$useStateAuthPhone[1];
+      var _React$useStateAuthTG = React.useState(""),
+        authTelegramChatId = _React$useStateAuthTG[0],
+        setAuthTelegramChatId = _React$useStateAuthTG[1];
       var _React$useStateAuthCity = React.useState(""),
         authCity = _React$useStateAuthCity[0],
         setAuthCity = _React$useStateAuthCity[1];
@@ -397,6 +400,12 @@
       var _React$useStateProfPhone = React.useState(""),
         editProfilePhone = _React$useStateProfPhone[0],
         setEditProfilePhone = _React$useStateProfPhone[1];
+      var _React$useStateProfTG = React.useState(""),
+        editProfileTelegramChatId = _React$useStateProfTG[0],
+        setEditProfileTelegramChatId = _React$useStateProfTG[1];
+      var _React$useStateProfAdminTG = React.useState(""),
+        editProfileAdminTelegramGroupId = _React$useStateProfAdminTG[0],
+        setEditProfileAdminTelegramGroupId = _React$useStateProfAdminTG[1];
       var _React$useStateProfMatches = React.useState(5),
         editProfileMatchesCount = _React$useStateProfMatches[0],
         setEditProfileMatchesCount = _React$useStateProfMatches[1];
@@ -945,7 +954,9 @@
       }
 
       function handleDeleteTournament() {
-        if (!selectedTournament || !currentUser) return;
+        if (!selectedTournament || !currentUser) {
+          return;
+        }
         if (!confirm("Are you sure you want to delete this tournament? This action cannot be undone.")) return;
         
         setSaving(true);
@@ -954,6 +965,7 @@
         fetch("/tournaments/" + selectedTournament.id, {
           method: "DELETE",
           headers: {
+            "Content-Type": "application/json",
             "x-user-id": currentUser.id
           }
         })
@@ -1038,6 +1050,8 @@
           setEditProfileName(target.fullName || "");
           setEditProfileNotification(target.preferredNotificationChannel || "None");
           setEditProfilePhone(target.phone || "");
+          setEditProfileTelegramChatId(target.telegramChatId || "");
+          setEditProfileAdminTelegramGroupId(target.adminTelegramGroupId || "");
           setEditProfileMatchesCount(target.recentMatchesCount || 5);
           setEditProfileRole(target.role || "Player");
           setEditProfileCity(target.location ? target.location.city : "");
@@ -1055,6 +1069,10 @@
               setError("Phone number is required for WhatsApp notifications");
               return;
           }
+          if (editProfileNotification === "Telegram" && !editProfileTelegramChatId) {
+              setError("Telegram Chat ID is required for Telegram notifications");
+              return;
+          }
           
           setSaving(true);
           setError("");
@@ -1063,6 +1081,8 @@
               fullName: editProfileName,
               preferredNotificationChannel: editProfileNotification,
               phone: editProfilePhone,
+              telegramChatId: editProfileTelegramChatId,
+              adminTelegramGroupId: editProfileAdminTelegramGroupId,
               recentMatchesCount: Number(editProfileMatchesCount),
               location: {
                   city: editProfileCity,
@@ -1205,8 +1225,9 @@
           .then(function (created) {
             setTournaments([created].concat(tournaments));
             setSelectedTournament(created);
-            // Organizer is not automatically registered
-            // setMyTournamentIds(myTournamentIds.concat(created.id));
+            // Organizer is automatically registered now
+            setMyTournamentsData(myTournamentsData.concat(created));
+            refreshParticipants(created.id); // Refresh to show self in list
             setView("tournamentDetails");
           })
           .catch(function (err) {
@@ -1961,7 +1982,8 @@
                        },
                            e("option", { value: "None" }, "None"),
                            e("option", { value: "Email" }, "Email"),
-                           e("option", { value: "WhatsApp" }, "WhatsApp")
+                           e("option", { value: "WhatsApp" }, "WhatsApp"),
+                           e("option", { value: "Telegram" }, "Telegram")
                        )
                     ),
                     e("div", { style: { marginBottom: 16 } },
@@ -1973,6 +1995,28 @@
                            disabled: !canEdit,
                            required: editProfileNotification === "WhatsApp",
                            placeholder: "Required for WhatsApp",
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                       })
+                    ),
+                    editProfileNotification === "Telegram" && e("div", { style: { marginBottom: 16 } },
+                       e("label", { className: "small" }, "Telegram Chat ID *"),
+                       e("div", { className: "small", style: { color: "#6b7280", marginBottom: 4 } }, "Start bot @YourBotName to get ID"),
+                       e("input", {
+                           type: "text",
+                           value: editProfileTelegramChatId,
+                           onChange: function(e) { setEditProfileTelegramChatId(e.target.value); },
+                           disabled: !canEdit,
+                           required: true,
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                       })
+                    ),
+                    (isAdmin && isSelf) && e("div", { style: { marginBottom: 16 } },
+                       e("label", { className: "small" }, "Admin Telegram Group ID (for broadcasts)"),
+                       e("div", { className: "small", style: { color: "#6b7280", marginBottom: 4 } }, "Add bot to group to get ID (usually starts with -100)"),
+                       e("input", {
+                           type: "text",
+                           value: editProfileAdminTelegramGroupId,
+                           onChange: function(e) { setEditProfileAdminTelegramGroupId(e.target.value); },
                            style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
                        })
                     ),
@@ -3666,36 +3710,38 @@
                    style: { padding: "6px 12px", background: "#059669", color: "white", border: "none", borderRadius: 6, cursor: "pointer", marginLeft: 8 }
                }, "Finish Tournament"),
                
-               selectedTournament.status === "In Progress" && !selectedTournament.roundStartTime && (
+               selectedTournament.status === "In Progress" && selectedTournament.schedulingMode !== "shuffle" && !selectedTournament.roundStartTime && (
                    (function() {
                        var currentRound = selectedTournament.currentRound || 0;
-                       var currentRoundMatches = matches.filter(function(m) { return m.round === currentRound; });
-                       var currentRoundIncomplete = currentRoundMatches.some(function(m) { return m.status !== "completed" && !(m.score1 && m.score2); });
-                       
-                       if (currentRound > 0 && currentRoundIncomplete) {
-                           return e("button", {
-                               type: "button",
-                               onClick: function() {
-                                   fetch("/tournaments/" + selectedTournament.id + "/round/start", {
-                                       method: "POST",
-                                       headers: { "x-user-id": currentUser.id }
-                                   })
-                                   .then(function(r) { 
-                                       if (!r.ok) return r.json().then(function(err) { alert(err.error); throw err; });
-                                       return r.json(); 
-                                   })
-                                   .then(function(t) { setSelectedTournament(t); })
-                                   .catch(function(e) { console.error(e); });
-                               },
-                               style: { padding: "6px 12px", background: "#10b981", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }
-                           }, "Start Round " + currentRound);
-                       }
-                       
-                       var nextRound = currentRound + 1;
-                       var nextRoundMatches = matches.filter(function(m) { return m.round === nextRound; });
-                       
-                       var maxRounds = selectedTournament.roundsCount || 100;
-                       if (selectedTournament.durationMinutes && selectedTournament.roundDurationMinutes) {
+                        var nextRound = currentRound + 1;
+                        var nextRoundMatches = matches.filter(function(m) { return m.round === nextRound; });
+                        
+                        var maxRounds = selectedTournament.roundsCount || 100;
+                         
+                         // Show "Start Round 1" if currentRound is 0 and R1 matches exist
+                         if (currentRound === 0) {
+                             var r1Matches = matches.filter(function(m) { return m.round === 1; });
+                             if (r1Matches.length > 0) {
+                                 return e("button", {
+                                     type: "button",
+                                     onClick: function() {
+                                         fetch("/tournaments/" + selectedTournament.id + "/round/start", {
+                                             method: "POST",
+                                             headers: { "x-user-id": currentUser.id }
+                                         })
+                                         .then(function(r) { 
+                                             if (!r.ok) return r.json().then(function(err) { alert(err.error); throw err; });
+                                             return r.json(); 
+                                         })
+                                         .then(function(t) { setSelectedTournament(t); })
+                                         .catch(function(e) { console.error(e); });
+                                     },
+                                     style: { padding: "6px 12px", background: "#10b981", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }
+                                 }, "Start Round 1");
+                             }
+                         }
+
+                         if (selectedTournament.durationMinutes && selectedTournament.roundDurationMinutes) {
                            var dur = selectedTournament.durationMinutes;
                            var rd = selectedTournament.roundDurationMinutes;
                            var bt = selectedTournament.breakTimeMinutes || 0;
@@ -3755,7 +3801,7 @@
                    })()
                ),
                
-               selectedTournament.status === "In Progress" && selectedTournament.roundStartTime && e("button", {
+               selectedTournament.status === "In Progress" && selectedTournament.schedulingMode !== "shuffle" && selectedTournament.roundStartTime && e("button", {
                    type: "button",
                    onClick: function() {
                       fetch("/tournaments/" + selectedTournament.id + "/round/finish", {
@@ -3938,7 +3984,7 @@
                          e.stopPropagation();
                          handleFillParticipantsRandom();
                       },
-                      title: "Заполнить игроками из общего списка",
+                      title: "Fill Participants from global list",
                       style: {
                         padding: 6,
                         borderRadius: 6,
@@ -3948,7 +3994,7 @@
                         whiteSpace: "nowrap"
                       }
                     },
-                    "Заполнить игроками"
+                    "Fill Participants"
                   )
                 )
             ),

@@ -7,10 +7,21 @@ const token = process.env.TELEGRAM_TOKEN;
 let bot = null;
 
 if (token) {
-    bot = new TelegramBot(token, { polling: false }); // Polling false because we only SEND messages mostly. 
-    // If we want to reply to /start to give chat ID, we need polling or webhook.
-    // Let's enable polling but handle errors gracefully if multiple instances run.
-    // Actually, for Render free tier, polling is okay.
+    bot = new TelegramBot(token, { polling: true }); 
+
+    // Listen for /start to give users their Chat ID
+    bot.onText(/\/start/, (msg) => {
+        const chatId = msg.chat.id;
+        bot.sendMessage(chatId, `Hello! Your Telegram Chat ID is:\n\`${chatId}\`\n\nPlease copy this and paste it into your Pickleball App profile.`, { parse_mode: "Markdown" });
+        console.log(`[Telegram] User started bot. Chat ID: ${chatId}`);
+    });
+    
+    // Log polling errors to prevent crash
+    bot.on("polling_error", (err) => {
+        if (err.code !== 'ETELEGRAM') {
+             console.log("[Telegram] Polling error:", err.code);
+        }
+    });
 } else {
     console.log("[Telegram] No token provided, service disabled.");
 }
@@ -36,13 +47,25 @@ const telegramService = {
     sendTournamentInvitation: async (user, tournament) => {
         if (user.preferredNotificationChannel !== "Telegram" || !user.telegramChatId) return;
         
-        const dateStr = tournament.startDate ? new Date(tournament.startDate).toLocaleDateString() : "TBD";
-        const timeStr = tournament.startDate ? new Date(tournament.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "";
+        const dateObj = tournament.startDate ? new Date(tournament.startDate) : null;
+        // Force en-US locale
+        const dateStr = dateObj ? dateObj.toLocaleDateString('en-US') : "TBD";
+        const timeStr = dateObj ? dateObj.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit', hour12: true}) : "";
+        
+        const weekday = dateObj ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : "";
+        
+        const locName = tournament.location ? tournament.location.name : "Location not set";
+        const locCity = tournament.location && tournament.location.city ? `, ${tournament.location.city}` : "";
         
         const text = `🏆 New Tournament: ${tournament.name}\n\n` +
-                     `📅 ${dateStr} ${timeStr}\n` +
-                     `📍 ${tournament.location ? tournament.location.name : "TBD"}\n` +
-                     `ℹ️ Format: ${tournament.format}\n\n` +
+                     `📅 ${weekday} ${dateStr} ${timeStr}\n` +
+                     `📍 ${locName}${locCity}\n` +
+                     `ℹ️ Format: ${tournament.format} (${tournament.type || "Singles"}) - Mode: ${tournament.schedulingMode || "fixed"}\n` +
+                     `🏟️ Courts: ${tournament.courtsCount || "?"}\n` +
+                     `🔄 Rounds: ${tournament.roundsCount || "?"}\n` +
+                     `⏱️ Duration: ${tournament.durationMinutes || "?"} minutes\n` +
+                     `👥 Max participants: ${tournament.maxParticipants || "Unlimited"}\n` +
+                     `Status: ${tournament.status}\n\n` +
                      `Log in to the app to join!`;
         
         await telegramService.sendMessage(user.telegramChatId, text);
@@ -51,8 +74,16 @@ const telegramService = {
     sendRegistrationConfirmation: async (user, tournament, status) => {
         if (user.preferredNotificationChannel !== "Telegram" || !user.telegramChatId) return;
         
+        const dateObj = tournament.startDate ? new Date(tournament.startDate) : null;
+        // Force en-US locale to get English weekday names regardless of system locale
+        const dateStr = dateObj ? dateObj.toLocaleDateString('en-US') : "TBD";
+        const timeStr = dateObj ? dateObj.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit', hour12: true}) : "";
+        const weekday = dateObj ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : "";
+
         const statusIcon = status === "confirmed" ? "✅" : "⏳";
-        const text = `${statusIcon} Registration Update: ${tournament.name}\n\n` +
+        const text = `Dear ${user.fullName},\n\n` +
+                     `${statusIcon} Registration Update: ${tournament.name}\n` +
+                     `📅 ${weekday} ${dateStr} ${timeStr}\n\n` +
                      `Status: ${status.toUpperCase()}\n` + 
                      (status === "waitlist" ? "You are on the waitlist." : "You are a confirmed participant.");
         
@@ -61,7 +92,16 @@ const telegramService = {
 
     sendWithdrawalConfirmation: async (user, tournament) => {
         if (user.preferredNotificationChannel !== "Telegram" || !user.telegramChatId) return;
-        const text = `🚫 Withdrawal Confirmed: ${tournament.name}\n\nYou have been removed from the list.`;
+        
+        const dateObj = tournament.startDate ? new Date(tournament.startDate) : null;
+        const dateStr = dateObj ? dateObj.toLocaleDateString('en-US') : "TBD";
+        const timeStr = dateObj ? dateObj.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit', hour12: true}) : "";
+        const weekday = dateObj ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : "";
+
+        const text = `Dear ${user.fullName},\n\n` +
+                     `🚫 Withdrawal Confirmed: ${tournament.name}\n` +
+                     `📅 ${weekday} ${dateStr} ${timeStr}\n\n` +
+                     `You have been removed from the list.`;
         await telegramService.sendMessage(user.telegramChatId, text);
     },
 
@@ -79,6 +119,13 @@ const telegramService = {
         if (user.preferredNotificationChannel !== "Telegram" || !user.telegramChatId) return;
         
         const text = `🏁 Tournament Finished: ${tournament.name}\n\nResults:\n${resultsText}`;
+        await telegramService.sendMessage(user.telegramChatId, text);
+    },
+
+    sendTournamentDeletion: async (user, tournamentName) => {
+        if (user.preferredNotificationChannel !== "Telegram" || !user.telegramChatId) return;
+
+        const text = `🗑️ Tournament Deleted: ${tournamentName}`;
         await telegramService.sendMessage(user.telegramChatId, text);
     }
 };
