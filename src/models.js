@@ -39,6 +39,7 @@ const tournamentSchema = new mongoose.Schema({
   type: { type: String, default: 'Singles' },
   schedulingMode: { type: String, default: 'fixed' },
   currentRound: { type: Number, default: 0 },
+  lastFinishedRound: { type: Number, default: 0 },
   roundStartTime: Date,
   format: { type: String, default: 'Round Robin' },
   status: { type: String, default: 'Open' },

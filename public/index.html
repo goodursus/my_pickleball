@@ -498,6 +498,22 @@
         showWaitlist = _React$useStateShowWaitlist[0],
         setShowWaitlist = _React$useStateShowWaitlist[1];
 
+      var _React$useStateCollapsedRounds = React.useState({}),
+        collapsedRounds = _React$useStateCollapsedRounds[0],
+        setCollapsedRounds = _React$useStateCollapsedRounds[1];
+
+      var _React$useStateCollapsedStandings = React.useState(true),
+        collapsedStandings = _React$useStateCollapsedStandings[0],
+        setCollapsedStandings = _React$useStateCollapsedStandings[1];
+
+      function toggleRoundCollapse(roundNum) {
+        setCollapsedRounds(function(prev) {
+          var next = Object.assign({}, prev);
+          next[roundNum] = !next[roundNum];
+          return next;
+        });
+      }
+
       // Round Timer Logic
       React.useEffect(function() {
          if (!selectedTournament || !selectedTournament.roundStartTime) {
@@ -509,23 +525,20 @@
              var start = new Date(selectedTournament.roundStartTime).getTime();
              var now = Date.now();
              
-             if (selectedTournament.roundDurationMinutes) {
-                 var durationMs = selectedTournament.roundDurationMinutes * 60 * 1000;
-                 var end = start + durationMs;
-                 var remaining = end - now;
-                 
-                 if (remaining <= 0) {
-                     setTimerString("00:00 (Finished)");
-                 } else {
-                     var m = Math.floor(remaining / 60000);
-                     var s = Math.floor((remaining % 60000) / 1000);
-                     setTimerString(String(m).padStart(2, '0') + ":" + String(s).padStart(2, '0'));
-                 }
+             var duration = selectedTournament.roundDurationMinutes || 15;
+            // Also check roundsCount as a fallback if duration is missing
+            if (!selectedTournament.roundDurationMinutes && selectedTournament.durationMinutes && selectedTournament.roundsCount) {
+                duration = Math.floor(selectedTournament.durationMinutes / selectedTournament.roundsCount);
+            }
+             var durationMs = duration * 60 * 1000;
+             var end = start + durationMs;
+             var remaining = end - now;
+             
+             if (remaining <= 0) {
+                 setTimerString("00:00 (Finished)");
              } else {
-                 // Show elapsed time if no duration
-                 var elapsed = now - start;
-                 var m = Math.floor(elapsed / 60000);
-                 var s = Math.floor((elapsed % 60000) / 1000);
+                 var m = Math.floor(remaining / 60000);
+                 var s = Math.floor((remaining % 60000) / 1000);
                  setTimerString(String(m).padStart(2, '0') + ":" + String(s).padStart(2, '0'));
              }
          }, 1000);
@@ -577,6 +590,13 @@
       function refreshTournaments() {
           fetch("/tournaments").then(function(r){return r.json()}).then(setTournaments);
       }
+
+      React.useEffect(function() {
+        if (selectedTournament) {
+            setCollapsedRounds({});
+            setCollapsedStandings(true); // Default to collapsed
+        }
+      }, [selectedTournament ? selectedTournament.id : null]);
 
       React.useEffect(function() {
         if (!selectedTournament) return;
@@ -1015,6 +1035,9 @@
         setCtFormat(t.format || "Round Robin");
         setCtRoundsCount(t.roundsCount || "");
         setCtRoundDurationMinutes(t.roundDurationMinutes || "");
+        setCtBreakTimeMinutes(t.breakTimeMinutes || "");
+        setCtType(t.type || "Singles");
+        setCtSchedulingMode(t.schedulingMode || "fixed");
         setCtStartDate("");
         setError("");
         setView("createTournament");
@@ -1187,7 +1210,7 @@
             : null,
           courtsCount: ctCourtsCount ? Number(ctCourtsCount) : 0,
           roundsCount: ctRoundsCount ? Number(ctRoundsCount) : null,
-          roundDuration: ctRoundDurationMinutes ? Number(ctRoundDurationMinutes) : null,
+          roundDurationMinutes: ctRoundDurationMinutes ? Number(ctRoundDurationMinutes) : null,
           breakTimeMinutes: ctBreakTimeMinutes ? Number(ctBreakTimeMinutes) : 0,
           type: ctType,
           format: ctFormat,
@@ -3129,14 +3152,16 @@
                            e("h4", { style: { marginTop: 0, marginBottom: 8 } }, "Schedule"),
                            roundKeys.map(function(rKey) {
                                var r = Number(rKey);
-                               var isExpanded = r === currentCourtRound || (currentCourtRound === 0 && r === 1);
+                               var isCollapsed = collapsedRounds[r] === undefined ? r !== currentCourtRound && (currentCourtRound !== 0 || r !== 1) : collapsedRounds[r];
+                               var isExpanded = !isCollapsed;
                                // Highlight current round with color
                                var roundStyle = {
                                    marginBottom: 12, 
                                    border: isExpanded ? "2px solid #3b82f6" : "1px solid #e5e7eb", 
                                    borderRadius: 8, 
-                                   padding: 8, 
-                                   background: isExpanded ? "#eff6ff" : "#f9fafb"
+                                   padding: 0, // removed padding for outer container
+                                   background: isExpanded ? "#eff6ff" : "#f9fafb",
+                                   overflow: "hidden"
                                };
                                
                                // Check for BYE
@@ -3151,14 +3176,29 @@
                                }
             
                                return e("div", { key: r, style: roundStyle },
-                                   e("h3", { style: { marginTop: 0, marginBottom: 8, fontSize: "1em", color: isExpanded ? "#1e40af" : "#6b7280" } }, 
-                                       "Round " + r + (isExpanded ? " (Current)" : "")
+                                   e("div", { 
+                                       onClick: function() { toggleRoundCollapse(r); },
+                                       style: { 
+                                           padding: 8, 
+                                           display: "flex", 
+                                           justifyContent: "space-between", 
+                                           alignItems: "center", 
+                                           cursor: "pointer",
+                                           background: isExpanded ? "rgba(59, 130, 246, 0.1)" : "transparent"
+                                       } 
+                                   },
+                                       e("h3", { style: { marginTop: 0, marginBottom: 0, fontSize: "1em", color: isExpanded ? "#1e40af" : "#6b7280" } }, 
+                                           "Round " + r + (r === currentCourtRound ? " (Current)" : "")
+                                       ),
+                                       e("span", { style: { fontSize: 10, color: "#9ca3af" } }, isExpanded ? "▼ Hide" : "▶ Show")
                                    ),
-                                   isBye 
-                                    ? e("div", { style: { padding: 16, textAlign: "center", fontSize: "1.5em", fontWeight: "bold", color: "#db2777" } }, "BYE")
-                                    : courtRounds[r].map(function(m) {
-                                        return renderMatchItem(m, isExpanded);
-                                   })
+                                   isExpanded && e("div", { style: { padding: 8 } },
+                                       isBye 
+                                        ? e("div", { style: { padding: 16, textAlign: "center", fontSize: "1.5em", fontWeight: "bold", color: "#db2777" } }, "BYE")
+                                        : courtRounds[r].map(function(m) {
+                                            return renderMatchItem(m, isExpanded);
+                                       })
+                                   )
                                );
                            }),
                            
@@ -3322,18 +3362,38 @@
             var isMyPending = hasPending && isParticipant && submitterTeam === myTeam;
             
             var roundStarted = false;
+            var timerFinished = false;
             if (selectedTournament.schedulingMode === "shuffle") {
                 var mCourtId = String(m.court);
                 var cp = courtProgress[mCourtId];
                 roundStarted = cp && cp.status === 'in_progress' && cp.currentRound === m.round;
             } else {
                 roundStarted = !!selectedTournament.roundStartTime && m.round === selectedTournament.currentRound;
+                if (selectedTournament.roundStartTime && m.round === selectedTournament.currentRound) {
+                    var start = new Date(selectedTournament.roundStartTime).getTime();
+                    var duration = selectedTournament.roundDurationMinutes || 15;
+                    if (!selectedTournament.roundDurationMinutes && selectedTournament.durationMinutes && selectedTournament.roundsCount) {
+                        duration = Math.floor(selectedTournament.durationMinutes / selectedTournament.roundsCount);
+                    }
+                    var durationMs = duration * 60 * 1000;
+                    timerFinished = (Date.now() - start) >= durationMs;
+                }
             }
 
-            var canInteract = !isCompleted && (organizerCanEdit || (roundStarted && isParticipant));
+            var isCurrentRound = m.round === selectedTournament.currentRound;
+            var isPastRound = m.round < selectedTournament.currentRound;
+            
+            // NEW: Show scores only if round finished (startTime is null) or timer hit zero
+            var canShowInput = isPastRound || (isCurrentRound && (!selectedTournament.roundStartTime || timerFinished));
+            var canInteract = !isCompleted && canShowInput && (organizerCanEdit || isParticipant);
+            var showScores = isCompleted || canShowInput;
             
             // Render Content
             var renderControls = function() {
+               if (!showScores) {
+                   return e("div", { style: { fontStyle: "italic", color: "#9ca3af", fontSize: 12 } }, "Score input available after round ends");
+               }
+               
                if (!canInteract) {
                    return e("div", null, (m.status === "completed" ? m.score1 + " - " + m.score2 : "TBD"));
                }
@@ -3471,61 +3531,113 @@
               rounds.map(function(roundNum) {
                  var roundMatches = matchesByRound[roundNum];
                  
+                 // NEW: Filter matches for ordinary players in Waterfall/Doubles mode
+                 var isWaterfall = selectedTournament.schedulingMode === "waterfall";
+                 if (!organizerCanEdit && isWaterfall && currentUser) {
+                     roundMatches = roundMatches.filter(function(m) {
+                         var curId = String(currentUser.id);
+                         var amInvolved = String(m.player1Id) === curId || String(m.partner1Id) === curId || String(m.player2Id) === curId || String(m.partner2Id) === curId;
+                         // Also include byes if the user is in the list
+                         if (m.status === 'bye') {
+                             var pIds = (m.player1Id || "").split(',');
+                             if (pIds.includes(curId)) amInvolved = true;
+                         }
+                         return amInvolved;
+                     });
+                 }
+
+                 if (roundMatches.length === 0) return null;
+                 
                  // Separate Byes
                  var standardMatches = roundMatches.filter(function(m){ return m.status !== 'bye'; });
                  var byeMatches = roundMatches.filter(function(m){ return m.status === 'bye'; });
                  
-                 return e("div", { key: roundNum, style: { marginBottom: 24, padding: 12, border: "1px solid #e5e7eb", borderRadius: 8, background: "#f9fafb" } },
-                     e("h3", { style: { marginTop: 0, borderBottom: "1px solid #ddd", paddingBottom: 8 } }, "Round " + roundNum),
-                     
-                     e("div", { style: { display: "flex", flexWrap: "wrap", gap: 16 } },
-                         standardMatches.map(function(m) {
-                             return renderMatchCard(m);
-                         })
+                 var isCollapsed = collapsedRounds[roundNum] === undefined ? Number(roundNum) < selectedTournament.currentRound : collapsedRounds[roundNum];
+                  var isCurrent = Number(roundNum) === selectedTournament.currentRound;
+                 
+                 return e("div", { key: roundNum, style: { marginBottom: 12, border: "1px solid #e5e7eb", borderRadius: 8, background: "#f9fafb", overflow: "hidden" } },
+                     e("div", { 
+                         onClick: function() { toggleRoundCollapse(roundNum); },
+                         style: { 
+                             padding: "10px 12px", 
+                             background: isCurrent ? "#eff6ff" : "#f3f4f6", 
+                             display: "flex", 
+                             justifyContent: "space-between", 
+                             alignItems: "center", 
+                             cursor: "pointer",
+                             borderBottom: isCollapsed ? "none" : "1px solid #e5e7eb"
+                         } 
+                     },
+                         e("h3", { style: { margin: 0, fontSize: 16 } }, "Round " + roundNum + (isCurrent ? " (Current)" : "")),
+                         e("span", { style: { fontSize: 12, color: "#6b7280" } }, isCollapsed ? "▶ Show" : "▼ Hide")
                      ),
                      
-                     // Show Byes if any
-                     byeMatches.length > 0 && e("div", { style: { marginTop: 12, padding: 8, background: "#fff", border: "1px dashed #9ca3af", borderRadius: 4, color: "#6b7280", fontSize: "0.9em" } },
-                         e("strong", null, "Byes (Sitting out): "),
-                         byeMatches.map(function(bm) {
-                             var pIds = (bm.player1Id || "").split(',');
-                             return pIds.map(function(pid) {
-                                 var u = users.find(function(x){ return x.id === pid; });
-                                 return u ? u.fullName : pid;
-                             }).join(", ");
-                         }).join(", ")
+                     !isCollapsed && e("div", { style: { padding: 12 } },
+                         e("div", { style: { display: "flex", flexWrap: "wrap", gap: 16 } },
+                             standardMatches.map(function(m) {
+                                 return renderMatchCard(m);
+                             })
+                         ),
+                         
+                         // Show Byes if any
+                         byeMatches.length > 0 && e("div", { style: { marginTop: 12, padding: 8, background: "#fff", border: "1px dashed #9ca3af", borderRadius: 4, color: "#6b7280", fontSize: "0.9em" } },
+                             e("strong", null, "Byes (Sitting out): "),
+                             byeMatches.map(function(bm) {
+                                 var pIds = (bm.player1Id || "").split(',');
+                                 return pIds.map(function(pid) {
+                                     var u = users.find(function(x){ return x.id === pid; });
+                                     return u ? u.fullName : pid;
+                                 }).join(", ");
+                             }).join(", ")
+                         )
                      )
                  );
              })
             ),
-           e("div", { className: "section" },
-             e("h2", { className: "section-title" }, "Standings (" + (selectedTournament.format || "Round Robin") + ((selectedTournament.format && selectedTournament.format !== "Round Robin" && selectedTournament.format !== "Waterfall") ? " - now Round Robin only" : "") + ")"),
-             e("table", { style: { width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" } },
-               e("thead", null, 
-                 e("tr", null, 
-                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "Player"),
-                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "P"),
-                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "W"),
-                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "L"),
-                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "PF"),
-                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "PA"),
-                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "Diff"),
-                   e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "Pts")
+           e("div", { className: "section", style: { padding: 0, overflow: "hidden" } },
+             e("div", { 
+                 onClick: function() { setCollapsedStandings(!collapsedStandings); },
+                 style: { 
+                     padding: "12px 16px", 
+                     background: "#f3f4f6", 
+                     display: "flex", 
+                     justifyContent: "space-between", 
+                     alignItems: "center", 
+                     cursor: "pointer",
+                     borderBottom: collapsedStandings ? "none" : "1px solid #e5e7eb"
+                 } 
+             },
+                 e("h2", { className: "section-title", style: { margin: 0 } }, "Standings (" + (selectedTournament.format || "Round Robin") + ((selectedTournament.format && selectedTournament.format !== "Round Robin" && selectedTournament.format !== "Waterfall") ? " - now Round Robin only" : "") + ")"),
+                 e("span", { style: { fontSize: 12, color: "#6b7280" } }, collapsedStandings ? "▶ Show" : "▼ Hide")
+             ),
+             !collapsedStandings && e("div", { style: { padding: 16 } },
+               e("table", { style: { width: "100%", fontSize: 14, textAlign: "left", borderCollapse: "collapse" } },
+                 e("thead", null, 
+                   e("tr", null, 
+                     e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "Player"),
+                     e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "P"),
+                     e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "W"),
+                     e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "L"),
+                     e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "PF"),
+                     e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "PA"),
+                     e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "Diff"),
+                     e("th", { style: { borderBottom: "1px solid #ddd", padding: 4 } }, "Pts")
+                   )
+                 ),
+                 e("tbody", null,
+                   sortedStandings.map(function(s) {
+                      return e("tr", { key: s.name },
+                        e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.name),
+                        e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.played),
+                        e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.won),
+                        e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.lost),
+                        e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.pointsFor),
+                        e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.pointsAgainst),
+                        e("td", { style: { borderBottom: "1px solid #eee", padding: 4, color: s.pointDiff >= 0 ? "green" : "red" } }, s.pointDiff > 0 ? "+" + s.pointDiff : s.pointDiff),
+                        e("td", { style: { borderBottom: "1px solid #eee", padding: 4, fontWeight: "bold" } }, s.points)
+                      );
+                   })
                  )
-               ),
-               e("tbody", null,
-                 sortedStandings.map(function(s) {
-                    return e("tr", { key: s.name },
-                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.name),
-                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.played),
-                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.won),
-                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.lost),
-                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.pointsFor),
-                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4 } }, s.pointsAgainst),
-                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4, color: s.pointDiff >= 0 ? "green" : "red" } }, s.pointDiff > 0 ? "+" + s.pointDiff : s.pointDiff),
-                      e("td", { style: { borderBottom: "1px solid #eee", padding: 4, fontWeight: "bold" } }, s.points)
-                    );
-                 })
                )
              )
            )
@@ -3710,94 +3822,124 @@
                    style: { padding: "6px 12px", background: "#059669", color: "white", border: "none", borderRadius: 6, cursor: "pointer", marginLeft: 8 }
                }, "Finish Tournament"),
                
-               selectedTournament.status === "In Progress" && selectedTournament.schedulingMode !== "shuffle" && !selectedTournament.roundStartTime && (
+               selectedTournament.status === "In Progress" && selectedTournament.schedulingMode !== "shuffle" && (
                    (function() {
-                       var currentRound = selectedTournament.currentRound || 0;
-                        var nextRound = currentRound + 1;
+                        var lastGeneratedRound = matches.reduce(function(acc, m) { return Math.max(acc, m.round || 0); }, 0);
+                        var nextRound = lastGeneratedRound + 1;
+                        
+                        // Current round we are dealing with is the last generated one
+                        var currentRoundMatches = matches.filter(function(m) { return m.round === lastGeneratedRound; });
                         var nextRoundMatches = matches.filter(function(m) { return m.round === nextRound; });
                         
                         var maxRounds = selectedTournament.roundsCount || 100;
-                         
-                         // Show "Start Round 1" if currentRound is 0 and R1 matches exist
-                         if (currentRound === 0) {
-                             var r1Matches = matches.filter(function(m) { return m.round === 1; });
-                             if (r1Matches.length > 0) {
-                                 return e("button", {
-                                     type: "button",
-                                     onClick: function() {
-                                         fetch("/tournaments/" + selectedTournament.id + "/round/start", {
-                                             method: "POST",
-                                             headers: { "x-user-id": currentUser.id }
-                                         })
-                                         .then(function(r) { 
-                                             if (!r.ok) return r.json().then(function(err) { alert(err.error); throw err; });
-                                             return r.json(); 
-                                         })
-                                         .then(function(t) { setSelectedTournament(t); })
-                                         .catch(function(e) { console.error(e); });
-                                     },
-                                     style: { padding: "6px 12px", background: "#10b981", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }
-                                 }, "Start Round 1");
-                             }
-                         }
+                        
+                        // 1. If round is currently active (timer running), show ONLY "Stop Round"
+                        if (selectedTournament.roundStartTime) {
+                            return null;
+                        }
 
-                         if (selectedTournament.durationMinutes && selectedTournament.roundDurationMinutes) {
-                           var dur = selectedTournament.durationMinutes;
-                           var rd = selectedTournament.roundDurationMinutes;
-                           var bt = selectedTournament.breakTimeMinutes || 0;
-                           if (rd + bt > 0) {
-                               var calculatedMax = Math.floor((dur + bt) / (rd + bt));
-                               if (calculatedMax > 0) maxRounds = Math.min(maxRounds, calculatedMax);
-                           }
-                       }
-                       
-                       if (nextRoundMatches.length > 0) {
-                           return e("button", {
-                               type: "button",
-                               onClick: function() {
-                                   fetch("/tournaments/" + selectedTournament.id + "/round/start", {
-                                       method: "POST",
-                                       headers: { "x-user-id": currentUser.id }
-                                   })
-                                   .then(function(r) { 
-                                       if (!r.ok) return r.json().then(function(err) { alert(err.error); throw err; });
-                                       return r.json(); 
-                                   })
-                                   .then(function(t) { setSelectedTournament(t); })
-                                   .catch(function(e) { console.error(e); });
-                               },
-                               style: { padding: "6px 12px", background: "#10b981", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }
-                           }, "Start Round " + nextRound);
-                       } else if (nextRound <= maxRounds) {
-                           return e("button", {
-                               type: "button",
-                               onClick: function() {
-                                   fetch("/tournaments/" + selectedTournament.id + "/rounds/next", {
-                                       method: "POST",
-                                       headers: { "x-user-id": currentUser.id }
-                                   })
-                                   .then(function(r) { 
-                                       if (!r.ok) return r.json().then(function(err) { alert(err.error); throw err; });
-                                       return r.json(); 
-                                   })
-                                   .then(function(data) { 
-                                       if (data.count === 0) {
-                                           alert("Warning: 0 matches generated. You need at least 4 participants for doubles.");
-                                       }
-                                       refreshMatches(selectedTournament.id);
-                                       fetch("/tournaments").then(function(r){return r.json()}).then(function(data){
-                                           setTournaments(data);
-                                           var updated = data.find(function(t){ return t.id === selectedTournament.id; });
-                                           if(updated) setSelectedTournament(updated);
-                                       });
-                                   })
-                                   .catch(function(e) { console.error(e); alert(e.message); });
-                               },
-                               style: { padding: "6px 12px", background: "#8b5cf6", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }
-                           }, "Generate Round " + nextRound);
-                       } else {
-                           return null;
-                       }
+                        // 2. If matches for a round are generated but round NOT started yet
+                        // This handles the state immediately after "Start Tournament" or "Generate Round"
+                        if (lastGeneratedRound > 0 && selectedTournament.currentRound < lastGeneratedRound) {
+                            return e("button", {
+                                type: "button",
+                                onClick: function() {
+                                    fetch("/tournaments/" + selectedTournament.id + "/round/start", {
+                                        method: "POST",
+                                        headers: { "x-user-id": currentUser.id }
+                                    })
+                                    .then(function(r) { 
+                                        if (!r.ok) return r.json().then(function(err) { alert(err.error); throw err; });
+                                        return r.json(); 
+                                    })
+                                    .then(function(t) { 
+                                        setSelectedTournament(t);
+                                        refreshMatches(t.id);
+                                    })
+                                    .catch(function(e) { console.error(e); });
+                                },
+                                style: { padding: "6px 12px", background: "#10b981", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }
+                            }, "Start Round " + lastGeneratedRound);
+                        } 
+                        
+                        // 3. If round was started and then stopped/finished (roundStartTime is null but currentRound matches lastGenerated)
+                        // This is the state for entering scores and then clicking "Finish Round"
+                        var isFinishedInDB = selectedTournament.lastFinishedRound === lastGeneratedRound;
+                        if (lastGeneratedRound > 0 && selectedTournament.currentRound === lastGeneratedRound && !nextRoundMatches.length && !isFinishedInDB) {
+                            // var missingMatches = currentRoundMatches.filter(function(m) { 
+                            //     return m.status !== 'completed' && m.status !== 'Completed'; 
+                            // });
+                            // var allScoresEntered = missingMatches.length === 0;
+                            var allScoresEntered = true; // Validation temporarily disabled per user request
+
+                            return e("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+                                // !allScoresEntered && e("div", { style: { color: "#ef4444", fontSize: "0.875rem" } }, 
+                                //     "⚠ Enter all scores for Round " + lastGeneratedRound + " (Missing on courts: " + 
+                                //     missingMatches.map(function(m) { return m.court || "TBD"; }).filter(function(c) { return c !== 0 && c !== "0" && c !== "TBD"; }).join(", ") + ")"
+                                // ),
+                                e("button", {
+                                    type: "button",
+                                    disabled: !allScoresEntered,
+                                    onClick: function() {
+                                        fetch("/tournaments/" + selectedTournament.id + "/round/complete", {
+                                            method: "POST",
+                                            headers: { "x-user-id": currentUser.id }
+                                        })
+                                        .then(function(r) { return r.json(); })
+                                        .then(function(t) {
+                                            setSelectedTournament(t);
+                                            refreshMatches(t.id);
+                                        })
+                                        .catch(function(err) {
+                                            console.error(err);
+                                            refreshMatches(selectedTournament.id);
+                                        });
+                                    },
+                                    style: { 
+                                        padding: "6px 12px", 
+                                        background: allScoresEntered ? "#f59e0b" : "#9ca3af", 
+                                        color: "white", 
+                                        border: "none", 
+                                        borderRadius: 6, 
+                                        cursor: allScoresEntered ? "pointer" : "not-allowed" 
+                                    }
+                                }, "Finish Round " + lastGeneratedRound)
+                            );
+                        } 
+                        
+                        // 4. Show Generate button (if no matches for next round AND we are not in the middle of a round)
+                        var isWaterfall = selectedTournament.schedulingMode === "waterfall";
+                        if (nextRound <= maxRounds) {
+                            // Only show generate if we have finished the current one (or haven't started any)
+                            var canGenerate = lastGeneratedRound === 0 || (selectedTournament.currentRound === lastGeneratedRound && !selectedTournament.roundStartTime && isFinishedInDB);
+                            
+                            if (canGenerate && !nextRoundMatches.length) {
+                                return e("button", {
+                                    type: "button",
+                                    onClick: function() {
+                                        fetch("/tournaments/" + selectedTournament.id + "/rounds/next", {
+                                            method: "POST",
+                                            headers: { "x-user-id": currentUser.id }
+                                        })
+                                        .then(function(r) { 
+                                            if (!r.ok) return r.json().then(function(err) { alert(err.error); throw err; });
+                                            return r.json(); 
+                                        })
+                                        .then(function(data) { 
+                                            refreshMatches(selectedTournament.id);
+                                            fetch("/tournaments").then(function(r){return r.json()}).then(function(data){
+                                                setTournaments(data);
+                                                var updated = data.find(function(t){ return t.id === selectedTournament.id; });
+                                                if(updated) setSelectedTournament(updated);
+                                            });
+                                        })
+                                        .catch(function(e) { console.error(e); alert(e.message); });
+                                    },
+                                    style: { padding: "6px 12px", background: "#8b5cf6", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }
+                                }, lastGeneratedRound === 0 ? "Start Tournament" : "Generate Round " + nextRound);
+                            }
+                        }
+                        return null;
                    })()
                ),
                
@@ -3809,10 +3951,13 @@
                           headers: { "x-user-id": currentUser.id }
                       })
                       .then(function(r) { return r.json(); })
-                      .then(function(t) { setSelectedTournament(t); });
+                      .then(function(t) { 
+                          setSelectedTournament(t);
+                          refreshMatches(t.id);
+                      });
                    },
                    style: { padding: "6px 12px", background: "#f59e0b", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }
-               }, "Finish Round " + (selectedTournament.currentRound || 1))
+               }, "Stop Round " + (selectedTournament.currentRound || 1)),
             ),
             e(
               "div",

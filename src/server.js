@@ -1299,11 +1299,14 @@ app.post("/tournaments/:id/reset", async (req, res) => {
             }
             
             // Standard (Waterfall, Round Robin, etc.)
-            if (t.currentRound === 0) {
-                const hasR1 = await Match.exists({ tournamentId: t.id, round: 1 });
-                if (hasR1) t.currentRound = 1;
-            }
+            // We find the max round from matches to determine what we are starting
+            const latestMatches = await Match.find({ tournamentId: t.id }).sort({ round: -1 }).limit(1);
+            const maxRound = latestMatches.length > 0 ? latestMatches[0].round : 0;
             
+            if (maxRound > 0) {
+                t.currentRound = maxRound;
+            }
+
             t.roundStartTime = new Date();
             await t.save();
             res.json(t);
@@ -1322,8 +1325,37 @@ app.post("/tournaments/:id/reset", async (req, res) => {
             if (!t) return res.status(404).json({ error: "Not found" });
 
             t.roundStartTime = null;
-            // Ensure status is In Progress
+            
+            // Increment currentRound when stopping the round
+            const latestMatches = await Match.find({ tournamentId: t.id }).sort({ round: -1 }).limit(1);
+            if (latestMatches.length > 0) {
+                t.currentRound = latestMatches[0].round;
+            }
+            
             if (t.status !== "In Progress") t.status = "In Progress";
+            
+            await t.save();
+            res.json(t);
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    app.post("/tournaments/:id/round/complete", async (req, res) => {
+        try {
+            const userId = req.header("x-user-id");
+            const user = await User.findOne({ id: userId });
+            if (!user || user.role !== "Organizer") return res.status(403).json({ error: "Forbidden" });
+
+            const t = await Tournament.findOne({ id: req.params.id });
+            if (!t) return res.status(404).json({ error: "Not found" });
+
+            // Mark current round as finished in the database
+            const lastMatch = await Match.findOne({ tournamentId: t.id }).sort({ round: -1 });
+            if (lastMatch) {
+                t.lastFinishedRound = lastMatch.round;
+                t.roundStartTime = null;
+            }
             
             await t.save();
             res.json(t);
@@ -1428,8 +1460,8 @@ app.post("/tournaments/:id/reset", async (req, res) => {
 
             await Match.insertMany(newMatches);
             
-            // Advance the round
-            t.currentRound = nextRound;
+            // Just reset the start time, don't advance the round number yet.
+            // The round number will be advanced when the round is actually STARTED.
             t.roundStartTime = null;
             await t.save();
 
