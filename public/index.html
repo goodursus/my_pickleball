@@ -1622,6 +1622,35 @@
         );
       }
 
+
+
+      function renderHelpModal() {
+        if (!showHelp) return null;
+        return e("div", {
+          style: {
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.5)", zIndex: 1000,
+            display: "flex", justifyContent: "center", alignItems: "center",
+            padding: 16
+          },
+          onClick: function(ev) { if (ev.target === ev.currentTarget) setShowHelp(false); }
+        },
+        e("div", {
+          style: {
+            background: "white", padding: 24, borderRadius: 12,
+            width: "100%", maxWidth: "600px", maxHeight: "85vh", overflowY: "auto",
+            position: "relative", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+          }
+        },
+          e("button", {
+            onClick: function() { setShowHelp(false); },
+            style: { position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#6b7280" }
+          }, "\u00D7"),
+          e("div", { dangerouslySetInnerHTML: { __html: HELP_CONTENT } })
+        )
+        );
+      }
+
       function renderAuth() {
         return e(
           "div",
@@ -1953,33 +1982,7 @@
                 )
             )
           ),
-          showHelp && e(
-              "div",
-              {
-                  style: {
-                      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-                      background: "rgba(0,0,0,0.5)", zIndex: 1000,
-                      display: "flex", justifyContent: "center", alignItems: "center",
-                      padding: 16
-                  },
-                  onClick: function(ev) { if (ev.target === ev.currentTarget) setShowHelp(false); }
-              },
-              e(
-                  "div",
-                  {
-                      style: {
-                          background: "white", padding: 24, borderRadius: 12,
-                          width: "100%", maxWidth: "600px", maxHeight: "85vh", overflowY: "auto",
-                          position: "relative", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-                      }
-                  },
-                  e("button", {
-                      onClick: function() { setShowHelp(false); },
-                      style: { position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#6b7280" }
-                  }, "×"),
-                  e("div", { dangerouslySetInnerHTML: { __html: HELP_CONTENT } })
-              )
-          )
+          renderHelpModal()
         );
       }
 
