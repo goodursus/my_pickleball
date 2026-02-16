@@ -275,6 +275,9 @@
       var _React$useStateAuthSkill = React.useState("Unknown"),
         authSkillLevel = _React$useStateAuthSkill[0],
         setAuthSkillLevel = _React$useStateAuthSkill[1];
+      var _React$useStateAuthDupr = React.useState(""),
+        authDuprRating = _React$useStateAuthDupr[0],
+        setAuthDuprRating = _React$useStateAuthDupr[1];
       var _React$useStateAuthMatches = React.useState(5),
         authMatchesCount = _React$useStateAuthMatches[0],
         setAuthMatchesCount = _React$useStateAuthMatches[1];
@@ -421,6 +424,9 @@
       var _React$useStateProfSkill = React.useState("Unknown"),
         editProfileSkillLevel = _React$useStateProfSkill[0],
         setEditProfileSkillLevel = _React$useStateProfSkill[1];
+      var _React$useStateProfDupr = React.useState(""),
+        editProfileDuprRating = _React$useStateProfDupr[0],
+        setEditProfileDuprRating = _React$useStateProfDupr[1];
       
       var _React$useStateEditFormat = React.useState("Round Robin"),
         editFormat = _React$useStateEditFormat[0],
@@ -857,6 +863,7 @@
             fullName: authFullName,
             location: { city: authCity, country: authCountry },
             skillLevel: authSkillLevel,
+            duprRating: Number(authDuprRating) || 1.0,
             preferredNotificationChannel: authNotification,
             recentMatchesCount: Number(authMatchesCount) || 5,
             phone: authPhone,
@@ -1080,6 +1087,7 @@
           setEditProfileCity(target.location ? target.location.city : "");
           setEditProfileCountry(target.location ? target.location.country : "");
           setEditProfileSkillLevel(target.skillLevel || "Unknown");
+          setEditProfileDuprRating(target.duprRating || "");
           
           setView("profile");
       }
@@ -1111,7 +1119,8 @@
                   city: editProfileCity,
                   country: editProfileCountry
               },
-              skillLevel: editProfileSkillLevel
+              skillLevel: editProfileSkillLevel,
+              duprRating: Number(editProfileDuprRating) || 1.0
           };
           
           // Only organizer can update role
@@ -1801,6 +1810,21 @@
                   e(
                     "div",
                     { style: { marginBottom: 8 } },
+                    e("label", { className: "small" }, "DUPR Rating (Optional, default 1.0)"),
+                    e("input", {
+                      type: "number",
+                      step: "0.01",
+                      min: "0",
+                      max: "10",
+                      placeholder: "e.g. 3.50",
+                      value: authDuprRating,
+                      onChange: function(ev) { setAuthDuprRating(ev.target.value); },
+                      style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
+                    })
+                  ),
+                  e(
+                    "div",
+                    { style: { marginBottom: 8 } },
                     e("label", { className: "small" }, "Recent Matches to use for Rating"),
                     e("input", {
                       type: "number",
@@ -1985,6 +2009,20 @@
                            e("option", { value: "Pro" }, "Pro"),
                            e("option", { value: "Unknown" }, "Unknown")
                        )
+                    ),
+                    e("div", { style: { marginBottom: 16 } },
+                       e("label", { className: "small" }, "DUPR Rating (Optional)"),
+                       e("input", {
+                           type: "number",
+                           step: "0.01",
+                           min: "0",
+                           max: "10",
+                           value: editProfileDuprRating,
+                           onChange: function(e) { setEditProfileDuprRating(e.target.value); },
+                           disabled: !canEdit,
+                           placeholder: "e.g. 3.50",
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                       })
                     ),
                     e("div", { style: { marginBottom: 16 } },
                        e("label", { className: "small" }, "Email (Read-only)"),

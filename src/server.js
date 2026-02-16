@@ -91,20 +91,13 @@ app.get("/rankings", async (req, res) => {
     // 1. Initialize stats for all users
     const stats = {};
     users.forEach(u => {
-      let baseRating = 1000;
-      switch(u.skillLevel) {
-          case "Beginner": baseRating = 1000; break;
-          case "Intermediate": baseRating = 1200; break;
-          case "Advanced": baseRating = 1400; break;
-          case "Pro": baseRating = 1600; break;
-      }
-      
       stats[u.id] = {
         id: u.id,
         email: u.email,
         role: u.role,
         fullName: u.fullName,
         skillLevel: u.skillLevel || "Beginner",
+        duprRating: u.duprRating || 1.0,
         preferredNotificationChannel: u.preferredNotificationChannel || "None",
         location: u.location,
         matchesPlayed: 0,
@@ -113,9 +106,7 @@ app.get("/rankings", async (req, res) => {
         draw: 0,
         pointsFor: 0,
         pointsAgainst: 0,
-        diff: 0,
-        baseRating: baseRating,
-        ratingChange: 0
+        diff: 0
       };
     });
 
@@ -138,13 +129,10 @@ app.get("/rankings", async (req, res) => {
           
           if (myScore > opScore) {
               stats[pid].won++;
-              stats[pid].ratingChange += 10;
           } else if (myScore < opScore) {
               stats[pid].lost++;
-              stats[pid].ratingChange -= 5;
           } else {
               stats[pid].draw++;
-              stats[pid].ratingChange += 2;
           }
       };
       
@@ -155,10 +143,10 @@ app.get("/rankings", async (req, res) => {
       if (pt2) updatePlayer(pt2, s2, s1);
     });
 
-    // 3. Convert to array and calculate final rating
+    // 3. Convert to array
     const rankingList = Object.values(stats).map(s => ({
         ...s,
-        rating: s.baseRating + s.ratingChange
+        rating: s.duprRating // Use stored DUPR rating
     }));
 
     // 4. Sort by Rating desc, then Win %, then Diff
@@ -178,7 +166,7 @@ app.get("/rankings", async (req, res) => {
 
 app.post("/auth/signup", async (req, res) => {
   try {
-    const { email, password, fullName, role, location, skillLevel, preferredNotificationChannel, recentMatchesCount, phone } = req.body;
+    const { email, password, fullName, role, location, skillLevel, duprRating, preferredNotificationChannel, recentMatchesCount, phone } = req.body;
 
     if (!email || !password || !fullName) {
       return res.status(400).json({ error: "email, password and fullName are required" });
@@ -212,6 +200,7 @@ app.post("/auth/signup", async (req, res) => {
       role: finalRole,
       location: location || null,
       skillLevel: skillLevel || null,
+      duprRating: duprRating ? parseFloat(duprRating) : 1.0,
       preferredNotificationChannel: preferredNotificationChannel || "None",
       recentMatchesCount: recentMatchesCount ? Number(recentMatchesCount) : 5,
       phone: phone || null,
@@ -249,7 +238,7 @@ app.patch("/users/:id", async (req, res) => {
         return res.status(403).json({ error: "Forbidden" });
     }
 
-    const { fullName, preferredNotificationChannel, recentMatchesCount, role, location, skillLevel, phone, telegramChatId, adminTelegramGroupId } = req.body;
+    const { fullName, preferredNotificationChannel, recentMatchesCount, role, location, skillLevel, duprRating, phone, telegramChatId, adminTelegramGroupId } = req.body;
 
     if (preferredNotificationChannel === "WhatsApp" && !phone && !targetUser.phone) {
          return res.status(400).json({ error: "Phone number is required for WhatsApp notifications" });
@@ -262,6 +251,7 @@ app.patch("/users/:id", async (req, res) => {
     if (fullName !== undefined) targetUser.fullName = fullName;
     if (preferredNotificationChannel !== undefined) targetUser.preferredNotificationChannel = preferredNotificationChannel;
     if (skillLevel !== undefined) targetUser.skillLevel = skillLevel;
+    if (duprRating !== undefined) targetUser.duprRating = parseFloat(duprRating);
     if (phone !== undefined) targetUser.phone = phone;
     if (adminTelegramGroupId !== undefined && isOrganizer) targetUser.adminTelegramGroupId = adminTelegramGroupId;
     
@@ -1503,7 +1493,9 @@ app.patch("/matches/:id", async (req, res) => {
         const isOrganizer = user && user.role === "Organizer";
         // ... Permission checks ...
         
+        const wasCompleted = match.status === "completed";
         const { score1, score2 } = req.body;
+
         if (isOrganizer) {
             if (score1 !== undefined) match.score1 = score1;
             if (score2 !== undefined) match.score2 = score2;
@@ -1516,6 +1508,68 @@ app.patch("/matches/:id", async (req, res) => {
         }
         
         await match.save();
+
+        // DUPR-like Rating Update
+        // Only update if transitioning to completed for the first time
+        if (!wasCompleted && match.status === "completed" && match.score1 != null && match.score2 != null) {
+            try {
+                const p1 = await User.findOne({ id: match.player1Id });
+                const p2 = await User.findOne({ id: match.player2Id });
+                const pt1 = match.partner1Id ? await User.findOne({ id: match.partner1Id }) : null;
+                const pt2 = match.partner2Id ? await User.findOne({ id: match.partner2Id }) : null;
+
+                if (p1 && p2) {
+                    const r1 = p1.duprRating || 1.0;
+                    const r2 = p2.duprRating || 1.0;
+                    const rt1 = pt1 ? (pt1.duprRating || 1.0) : r1;
+                    const rt2 = pt2 ? (pt2.duprRating || 1.0) : r2;
+
+                    const t1Rating = pt1 ? (r1 + rt1) / 2 : r1;
+                    const t2Rating = pt2 ? (r2 + rt2) / 2 : r2;
+
+                    const s1 = Number(match.score1);
+                    const s2 = Number(match.score2);
+                    const totalPoints = s1 + s2;
+
+                    if (totalPoints > 0) {
+                        const diff = t1Rating - t2Rating;
+                        // Prob of Team 1 winning (Scale factor 2.0)
+                        const prob1 = 1 / (1 + Math.pow(10, -diff / 2.0));
+                        const prob2 = 1 - prob1;
+
+                        const actual1 = s1 / totalPoints;
+                        const actual2 = s2 / totalPoints;
+
+                        const updatePlayerRating = async (player, teamRating, myActual, myProb) => {
+                            if (!player) return;
+                            const myRating = player.duprRating || 1.0;
+                            // K-Factor: Higher if rating is low (Provisional)
+                            const K = myRating < 2.0 ? 0.5 : 0.1;
+                            
+                            let change = K * (myActual - myProb);
+                            // Bonus for winning? DUPR values winning.
+                            // The actual share method already rewards winning (share > 0.5).
+                            // But maybe we add a small win bonus?
+                            // Let's stick to share-based for now.
+                            
+                            let newRating = myRating + change;
+                            if (newRating < 1.0) newRating = 1.0; // Floor
+                            player.duprRating = Number(newRating.toFixed(3));
+                            await player.save();
+                        };
+
+                        await updatePlayerRating(p1, t1Rating, actual1, prob1);
+                        await updatePlayerRating(pt1, t1Rating, actual1, prob1);
+                        await updatePlayerRating(p2, t2Rating, actual2, prob2);
+                        await updatePlayerRating(pt2, t2Rating, actual2, prob2);
+                    }
+                }
+            } catch (ratingErr) {
+                console.error("Failed to update ratings:", ratingErr);
+                // Don't fail the request if rating update fails
+            }
+        }
+
         res.json(match);
     } catch (err) {
         res.status(500).json({ error: err.message });
