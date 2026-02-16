@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema({
     country: String,
     name: String
   },
-  skillLevel: { type: String, default: 'Beginner' },
+  skillLevel: { type: mongoose.Schema.Types.Mixed, default: 1.0 },
   duprRating: { type: Number, default: 1.0 },
   preferredNotificationChannel: { type: String, default: 'None' },
   recentMatchesCount: { type: Number, default: 5 },

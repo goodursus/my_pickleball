@@ -146,7 +146,7 @@ app.get("/rankings", async (req, res) => {
     // 3. Convert to array
     const rankingList = Object.values(stats).map(s => ({
         ...s,
-        rating: s.duprRating // Use stored DUPR rating
+        rating: s.skillLevel && !isNaN(s.skillLevel) ? Number(s.skillLevel) : (s.duprRating || 1.0)
     }));
 
     // 4. Sort by Rating desc, then Win %, then Diff
@@ -942,34 +942,14 @@ app.post("/tournaments/:id/generate-schedule", async (req, res) => {
 
     if (tournament.schedulingMode === "shuffle") {
         // ... (Same logic, but fetching user stats from DB first)
+        // Fetch users to get current ratings
         const allUsers = await User.find({});
-        const userStats = {};
+        const userRatings = {};
         allUsers.forEach(u => {
-            let baseRating = 1000;
-            if (u.skillLevel === "Intermediate") baseRating = 1200;
-            else if (u.skillLevel === "Advanced") baseRating = 1400;
-            else if (u.skillLevel === "Pro") baseRating = 1600;
-            userStats[u.id] = { baseRating, ratingChange: 0 };
+             userRatings[u.id] = (u.skillLevel && !isNaN(u.skillLevel)) ? Number(u.skillLevel) : (u.duprRating || 1.0);
         });
 
-        // NOTE: We should fetch ALL completed matches to calc global rating? 
-        // Original logic: matches.forEach... (global var).
-        // Here: await Match.find({ status: "completed" });
-        const allCompletedMatches = await Match.find({ status: "completed" });
-        allCompletedMatches.forEach(m => {
-             const process = (pid, my, op) => {
-                 if (!userStats[pid]) return;
-                 if (my > op) userStats[pid].ratingChange += 10;
-                 else if (my < op) userStats[pid].ratingChange -= 5;
-                 else userStats[pid].ratingChange += 2;
-             };
-             process(m.player1Id, m.score1, m.score2);
-             if (m.partner1Id) process(m.partner1Id, m.score1, m.score2);
-             process(m.player2Id, m.score2, m.score1);
-             if (m.partner2Id) process(m.partner2Id, m.score2, m.score1);
-        });
-
-        const getRating = (uid) => userStats[uid] ? (userStats[uid].baseRating + userStats[uid].ratingChange) : 1000;
+        const getRating = (uid) => userRatings[uid] || 1.0;
         
         const sortedEntries = [...entries].sort((a, b) => getRating(b.userId) - getRating(a.userId));
         
@@ -1519,10 +1499,12 @@ app.patch("/matches/:id", async (req, res) => {
                 const pt2 = match.partner2Id ? await User.findOne({ id: match.partner2Id }) : null;
 
                 if (p1 && p2) {
-                    const r1 = p1.duprRating || 1.0;
-                    const r2 = p2.duprRating || 1.0;
-                    const rt1 = pt1 ? (pt1.duprRating || 1.0) : r1;
-                    const rt2 = pt2 ? (pt2.duprRating || 1.0) : r2;
+                    const getRating = (p) => (p.skillLevel && !isNaN(p.skillLevel)) ? Number(p.skillLevel) : (p.duprRating || 1.0);
+
+                    const r1 = getRating(p1);
+                    const r2 = getRating(p2);
+                    const rt1 = pt1 ? getRating(pt1) : r1;
+                    const rt2 = pt2 ? getRating(pt2) : r2;
 
                     const t1Rating = pt1 ? (r1 + rt1) / 2 : r1;
                     const t2Rating = pt2 ? (r2 + rt2) / 2 : r2;
@@ -1542,19 +1524,19 @@ app.patch("/matches/:id", async (req, res) => {
 
                         const updatePlayerRating = async (player, teamRating, myActual, myProb) => {
                             if (!player) return;
-                            const myRating = player.duprRating || 1.0;
+                            // Use skillLevel as current dynamic rating, or fallback to official DUPR
+                            const currentDynamic = (player.skillLevel && !isNaN(player.skillLevel)) ? Number(player.skillLevel) : (player.duprRating || 1.0);
+                            
                             // K-Factor: Higher if rating is low (Provisional)
-                            const K = myRating < 2.0 ? 0.5 : 0.1;
+                            const K = currentDynamic < 2.0 ? 0.5 : 0.1;
                             
                             let change = K * (myActual - myProb);
-                            // Bonus for winning? DUPR values winning.
-                            // The actual share method already rewards winning (share > 0.5).
-                            // But maybe we add a small win bonus?
-                            // Let's stick to share-based for now.
                             
-                            let newRating = myRating + change;
+                            let newRating = currentDynamic + change;
                             if (newRating < 1.0) newRating = 1.0; // Floor
-                            player.duprRating = Number(newRating.toFixed(3));
+                            
+                            // Save to skillLevel (dynamic rating)
+                            player.skillLevel = Number(newRating.toFixed(3));
                             await player.save();
                         };
 

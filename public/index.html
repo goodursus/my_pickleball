@@ -139,6 +139,67 @@
         ]
     };
 
+    var HELP_CONTENT = `
+        <div style="line-height: 1.6; color: #374151;">
+            <h2 style="margin-top: 0; font-size: 20px; font-weight: bold; color: #111827;">Help & Instructions</h2>
+            <p>This app is designed for organizing pickleball tournaments. Currently, two formats are supported:</p>
+            <ul style="padding-left: 20px; margin-bottom: 16px;">
+                <li><b>Waterfall</b>, where players move between courts after each round.</li>
+                <li><b>Shuffle Doubles</b>, where players play the entire tournament on a single court, each against everyone else.</li>
+            </ul>
+
+            <p>The app currently doesn't require any personal information. However, you must fill in the following fields:</p>
+            <ul style="padding-left: 20px; margin-bottom: 16px;">
+                <li><b>Email</b> (any information, but in email format, such as <code>name@gmail.com</code>).</li>
+                <li><b>Password</b> (any simple one).</li>
+                <li><b>Full Name</b>, which you can use to identify yourself in the app.</li>
+            </ul>
+
+            <p>You can also fill in the <b>DUPR Rating (Official)</b> field with your current DUPR rating. If you don't have one or don't want to enter one, your rating will default to 1. Player ratings are calculated after the tournament according to DUPR rules, but there's no feedback—everything is internal.</p>
+
+            <p>If you encounter any issues, refresh the page and repeat your steps.</p>
+
+            <p>To log in to the app, enter the email and password you saved. On the <b>Homepage</b> (all tabs at the bottom of the screen), in the <b>Upcoming Tournaments</b> section, you'll see a list of tournaments with the <b>Open</b> status — tournaments currently open for registration. Click on a tournament to view its details and a button to join. The "joined" status will be added to the Home tab for this tournament.</p>
+
+            <p>If more players register than the maximum number of participants, you may be placed on the waiting list. If a player from the main list withdraws from a tournament, the earliest player registered from the waiting list will be added to the main list.</p>
+
+            <p>The organizer starts the tournament, and each registered player can view the tournament schedule. At the end of a round, players enter their results. After each round, the tournament standings table is recalculated.</p>
+
+            <p>If the tournament format is <b>Waterfall</b>, the round duration counter starts counting down when the round starts, and once it reaches zero, the round results can be entered.</p>
+
+            <p>On the <b>Rankings</b> tab you can see the current situation with player ratings.</p>
+            <p>The <b>Tournaments</b> tab provides a list of all tournaments. The <b>Profile</b> tab displays a list of your player data, with editable options for some fields.</p>
+
+            <p>The app has a tournament event notification system, which is reflected in the <b>Notification Preference</b> field of your profile. Currently, only the Telegram system is supported, as free access to email and WhatsApp services is not yet available. For Telegram, you must fill in the <b>Telegram Chat ID</b> field in your profile. To do this, find the Telegram bot <code>@PickleballVeteranBot</code> or the chat name <code>PickleballNotifyBot</code>, enter the command <code>/start</code>, copy the code, and enter it in the Telegram Chat ID field. Notifications are triggered by the following tournament events: tournament creation, joining a tournament, leaving a tournament, tournament start, and tournament end, with the display of tournament standings.</p>
+
+            <h3 style="font-size: 18px; font-weight: bold; margin-top: 24px; color: #111827;">Brief rules for calculating player ratings (analogous to DUPR)</h3>
+            <p>The rating system is based on a probability model that takes into account the strength of opponents and the outcome of the match.</p>
+
+            <p><b>Initial rating:</b><br/>
+            When registering, the player specifies his official DUPR rating or receives an initial value of 1.0 (Beginner).</p>
+
+            <p><b>Match Impact:</b><br/>
+            The rating changes after each completed match.<br/>
+            Not only the win/loss is taken into account, but also the match score (the percentage of points won).<br/>
+            A landslide victory (11-0) gives more points than a close-fought victory (11-9).</p>
+
+            <p><b>Calculation:</b><br/>
+            For each pair of opponents, the expected result (probability of victory) is calculated based on the difference in their current ratings.<br/>
+            The rating changes by the value: <code>K * (Actual result - Expected result)</code>.<br/>
+            The actual result is the percentage of points scored by a player in a match.</p>
+
+            <p><b>Dynamic coefficient (K-Factor):</b><br/>
+            For beginners (rating < 2.0): K = 0.5. The rating changes quickly to quickly reach the real level.<br/>
+            For experienced (rating ≥ 2.0): K = 0.1. The rating is more stable.</p>
+
+            <p><b>Doubles:</b><br/>
+            The average rating of teammates is used.</p>
+
+            <p><b>Manual update:</b><br/>
+            A player can manually update their rating in their profile (for example, if it changes in an external tournament). The new rating will serve as the basis for future calculations.</p>
+        </div>
+    `;
+
     function formatDate(dateStr) {
       if (!dateStr) return "TBD";
       return new Date(dateStr).toLocaleString("en-US", {
@@ -272,9 +333,6 @@
       var _React$useStateAuthCountry = React.useState(""),
         authCountry = _React$useStateAuthCountry[0],
         setAuthCountry = _React$useStateAuthCountry[1];
-      var _React$useStateAuthSkill = React.useState("Unknown"),
-        authSkillLevel = _React$useStateAuthSkill[0],
-        setAuthSkillLevel = _React$useStateAuthSkill[1];
       var _React$useStateAuthDupr = React.useState(""),
         authDuprRating = _React$useStateAuthDupr[0],
         setAuthDuprRating = _React$useStateAuthDupr[1];
@@ -421,16 +479,20 @@
       var _React$useStateProfCountry = React.useState(""),
         editProfileCountry = _React$useStateProfCountry[0],
         setEditProfileCountry = _React$useStateProfCountry[1];
-      var _React$useStateProfSkill = React.useState("Unknown"),
-        editProfileSkillLevel = _React$useStateProfSkill[0],
-        setEditProfileSkillLevel = _React$useStateProfSkill[1];
       var _React$useStateProfDupr = React.useState(""),
         editProfileDuprRating = _React$useStateProfDupr[0],
         setEditProfileDuprRating = _React$useStateProfDupr[1];
+      var _React$useStateProfSkill = React.useState(""),
+        editProfileSkillLevel = _React$useStateProfSkill[0],
+        setEditProfileSkillLevel = _React$useStateProfSkill[1];
       
       var _React$useStateEditFormat = React.useState("Round Robin"),
         editFormat = _React$useStateEditFormat[0],
         setEditFormat = _React$useStateEditFormat[1];
+
+      var _React$useStateHelp = React.useState(false),
+        showHelp = _React$useStateHelp[0],
+        setShowHelp = _React$useStateHelp[1];
 
       // Auto-calculate rounds count when duration parameters change
       React.useEffect(function() {
@@ -862,7 +924,6 @@
             password: authPassword,
             fullName: authFullName,
             location: { city: authCity, country: authCountry },
-            skillLevel: authSkillLevel,
             duprRating: Number(authDuprRating) || 1.0,
             preferredNotificationChannel: authNotification,
             recentMatchesCount: Number(authMatchesCount) || 5,
@@ -1085,9 +1146,9 @@
           setEditProfileMatchesCount(target.recentMatchesCount || 5);
           setEditProfileRole(target.role || "Player");
           setEditProfileCity(target.location ? target.location.city : "");
-          setEditProfileCountry(target.location ? target.location.country : "");
-          setEditProfileSkillLevel(target.skillLevel || "Unknown");
-          setEditProfileDuprRating(target.duprRating || "");
+            setEditProfileCountry(target.location ? target.location.country : "");
+            setEditProfileDuprRating(target.duprRating || "");
+            setEditProfileSkillLevel(target.skillLevel || target.duprRating || "1.00");
           
           setView("profile");
       }
@@ -1116,12 +1177,11 @@
               adminTelegramGroupId: editProfileAdminTelegramGroupId,
               recentMatchesCount: Number(editProfileMatchesCount),
               location: {
-                  city: editProfileCity,
-                  country: editProfileCountry
-              },
-              skillLevel: editProfileSkillLevel,
-              duprRating: Number(editProfileDuprRating) || 1.0
-          };
+                    city: editProfileCity,
+                    country: editProfileCountry
+                },
+                duprRating: Number(editProfileDuprRating) || 1.0
+            };
           
           // Only organizer can update role
           if (currentUser.role === "Organizer") {
@@ -1527,7 +1587,7 @@
                   null,
                   e("th", { style: { textAlign: "left", padding: 8, borderBottom: "1px solid #ddd" } }, "#"),
                   e("th", { style: { textAlign: "left", padding: 8, borderBottom: "1px solid #ddd" } }, "Player"),
-                  e("th", { style: { textAlign: "left", padding: 8, borderBottom: "1px solid #ddd" } }, "Level"),
+                  e("th", { style: { textAlign: "left", padding: 8, borderBottom: "1px solid #ddd" } }, "DUPR"),
                   e("th", { style: { textAlign: "center", padding: 8, borderBottom: "1px solid #ddd" } }, "Matches"),
                   e("th", { style: { textAlign: "center", padding: 8, borderBottom: "1px solid #ddd" } }, "W-D-L"),
                   e("th", { style: { textAlign: "right", padding: 8, borderBottom: "1px solid #ddd" } }, "Rating")
@@ -1550,7 +1610,7 @@
                         }, p.fullName) :
                         p.fullName
                     ),
-                    e("td", { style: { padding: 8, borderBottom: "1px solid #eee" } }, p.skillLevel),
+                    e("td", { style: { padding: 8, borderBottom: "1px solid #eee" } }, p.duprRating ? Number(p.duprRating).toFixed(2) : "1.00"),
                     e("td", { style: { textAlign: "center", padding: 8, borderBottom: "1px solid #eee" } }, p.matchesPlayed),
                     e("td", { style: { textAlign: "center", padding: 8, borderBottom: "1px solid #eee" } }, p.won + "-" + p.draw + "-" + p.lost),
                     e("td", { style: { textAlign: "right", padding: 8, borderBottom: "1px solid #eee", fontWeight: "bold" } }, p.rating)
@@ -1569,10 +1629,21 @@
           e(
             "div",
             { className: "app-header" },
-            e("span", null, "Pickleball"),
-            loading
-              ? e("span", { className: "small" }, "Loading")
-              : e("span", { className: "small" }, "Please sign in")
+            e("div", { style: { display: "flex", flexDirection: "column" } },
+                e("span", null, "Pickleball"),
+                loading
+                  ? e("span", { className: "small", style: { color: "#9ca3af" } }, "Loading")
+                  : e("span", { className: "small", style: { color: "#9ca3af" } }, "Please sign in")
+            ),
+            e(
+                "button",
+                {
+                    type: "button",
+                    onClick: function() { setShowHelp(true); },
+                    style: { background: "#3b82f6", color: "white", padding: "6px 12px", borderRadius: 6, border: "none", fontWeight: 600, fontSize: 14, cursor: "pointer" }
+                },
+                "Help"
+            )
           ),
           e(
             "div",
@@ -1795,21 +1866,6 @@
                   e(
                     "div",
                     { style: { marginBottom: 8 } },
-                    e("label", { className: "small" }, "Skill Level"),
-                    e("select", {
-                        value: authSkillLevel,
-                        onChange: function(ev) { setAuthSkillLevel(ev.target.value); },
-                        style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db", boxSizing: "border-box" }
-                    },
-                        e("option", { value: "Beginner" }, "Beginner (1.0-2.5)"),
-                        e("option", { value: "Intermediate" }, "Intermediate (3.0-3.5)"),
-                        e("option", { value: "Advanced" }, "Advanced (4.0-4.5)"),
-                        e("option", { value: "Pro" }, "Pro (5.0+)")
-                    )
-                  ),
-                  e(
-                    "div",
-                    { style: { marginBottom: 8 } },
                     e("label", { className: "small" }, "DUPR Rating (Optional, default 1.0)"),
                     e("input", {
                       type: "number",
@@ -1896,6 +1952,33 @@
                   )
                 )
             )
+          ),
+          showHelp && e(
+              "div",
+              {
+                  style: {
+                      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+                      background: "rgba(0,0,0,0.5)", zIndex: 1000,
+                      display: "flex", justifyContent: "center", alignItems: "center",
+                      padding: 16
+                  },
+                  onClick: function(ev) { if (ev.target === ev.currentTarget) setShowHelp(false); }
+              },
+              e(
+                  "div",
+                  {
+                      style: {
+                          background: "white", padding: 24, borderRadius: 12,
+                          width: "100%", maxWidth: "600px", maxHeight: "85vh", overflowY: "auto",
+                          position: "relative", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+                      }
+                  },
+                  e("button", {
+                      onClick: function() { setShowHelp(false); },
+                      style: { position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#6b7280" }
+                  }, "×"),
+                  e("div", { dangerouslySetInnerHTML: { __html: HELP_CONTENT } })
+              )
           )
         );
       }
@@ -1997,21 +2080,15 @@
                     ),
                     e("div", { style: { marginBottom: 16 } },
                        e("label", { className: "small" }, "Skill Level"),
-                       e("select", {
-                           value: editProfileSkillLevel,
-                           onChange: function(e) { setEditProfileSkillLevel(e.target.value); },
-                           disabled: !canEdit,
-                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
-                       },
-                           e("option", { value: "Beginner" }, "Beginner"),
-                           e("option", { value: "Intermediate" }, "Intermediate"),
-                           e("option", { value: "Advanced" }, "Advanced"),
-                           e("option", { value: "Pro" }, "Pro"),
-                           e("option", { value: "Unknown" }, "Unknown")
-                       )
+                       e("input", {
+                           type: "text",
+                           value: editProfileSkillLevel || "1.00",
+                           disabled: true,
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #e5e7eb", background: "#f3f4f6", color: "#6b7280" }
+                       })
                     ),
                     e("div", { style: { marginBottom: 16 } },
-                       e("label", { className: "small" }, "DUPR Rating (Optional)"),
+                       e("label", { className: "small" }, "DUPR Rating (Official)"),
                        e("input", {
                            type: "number",
                            step: "0.01",
@@ -4115,7 +4192,7 @@
                 )
             )
           ),
-          (currentUser && currentUser.role === "Organizer") && e(
+          (currentUser) && e(
             "div",
             { className: "section" },
             e(
@@ -4186,7 +4263,7 @@
                return e("div", { key: u.id, className: "item small" }, u.fullName || u.email);
             })
           ),
-          (participantsWaitlist.length > 0 && currentUser && currentUser.role === "Organizer") && e(
+          (participantsWaitlist.length > 0 && currentUser) && e(
             "div",
             { className: "section" },
             e(
