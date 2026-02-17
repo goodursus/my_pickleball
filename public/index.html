@@ -485,6 +485,12 @@
       var _React$useStateProfSkill = React.useState(""),
         editProfileSkillLevel = _React$useStateProfSkill[0],
         setEditProfileSkillLevel = _React$useStateProfSkill[1];
+      var _React$useStateProfEmail = React.useState(""),
+        editProfileEmail = _React$useStateProfEmail[0],
+        setEditProfileEmail = _React$useStateProfEmail[1];
+      var _React$useStateProfPwd = React.useState(""),
+        editProfilePassword = _React$useStateProfPwd[0],
+        setEditProfilePassword = _React$useStateProfPwd[1];
       
       var _React$useStateEditFormat = React.useState("Round Robin"),
         editFormat = _React$useStateEditFormat[0],
@@ -1139,6 +1145,8 @@
           
           setProfileUser(target);
           setEditProfileName(target.fullName || "");
+          setEditProfileEmail(target.email || "");
+          setEditProfilePassword(""); // Reset password field
           setEditProfileNotification(target.preferredNotificationChannel || "None");
           setEditProfilePhone(target.phone || "");
           setEditProfileTelegramChatId(target.telegramChatId || "");
@@ -1171,6 +1179,8 @@
           
           var body = {
               fullName: editProfileName,
+              email: editProfileEmail,
+              password: editProfilePassword || undefined,
               preferredNotificationChannel: editProfileNotification,
               phone: editProfilePhone,
               telegramChatId: editProfileTelegramChatId,
@@ -1796,15 +1806,6 @@
                       style: { width: "100%", padding: 10, borderRadius: 6, border: "none", background: "#111827", color: "#f9fafb", fontWeight: 600 }
                     },
                     loading ? "Signing in..." : "Login"
-                  ),
-                  e(
-                    "button",
-                    {
-                      type: "button",
-                      onClick: handleUseDemoAdmin,
-                      style: { width: "100%", padding: 8, borderRadius: 6, border: "none", background: "transparent", color: "#111827", fontSize: 12, marginTop: 4 }
-                    },
-                    "Use demo admin"
                   )
                 ),
               authMode === "signup" &&
@@ -2105,12 +2106,24 @@
                        })
                     ),
                     e("div", { style: { marginBottom: 16 } },
-                       e("label", { className: "small" }, "Email (Read-only)"),
+                       e("label", { className: "small" }, "Email"),
                        e("input", {
-                           type: "text",
-                           value: profileUser.email,
-                           disabled: true,
-                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #e5e7eb", background: "#f3f4f6" }
+                           type: "email",
+                           value: editProfileEmail,
+                           onChange: function(e) { setEditProfileEmail(e.target.value); },
+                           disabled: !canEdit,
+                           required: true,
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
+                       })
+                    ),
+                    canEdit && e("div", { style: { marginBottom: 16 } },
+                       e("label", { className: "small" }, "New Password (leave blank to keep current)"),
+                       e("input", {
+                           type: "password",
+                           value: editProfilePassword,
+                           onChange: function(e) { setEditProfilePassword(e.target.value); },
+                           placeholder: "Enter new password",
+                           style: { width: "100%", padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }
                        })
                     ),
                     e("div", { style: { marginBottom: 16 } },

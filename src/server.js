@@ -238,7 +238,20 @@ app.patch("/users/:id", async (req, res) => {
         return res.status(403).json({ error: "Forbidden" });
     }
 
-    const { fullName, preferredNotificationChannel, recentMatchesCount, role, location, skillLevel, duprRating, phone, telegramChatId, adminTelegramGroupId } = req.body;
+    const { fullName, preferredNotificationChannel, recentMatchesCount, role, location, skillLevel, duprRating, phone, telegramChatId, adminTelegramGroupId, email, password } = req.body;
+
+    if (email !== undefined) {
+        // Check if email is taken by another user
+        const existing = await User.findOne({ email });
+        if (existing && existing.id !== targetId) {
+             return res.status(409).json({ error: "Email already in use" });
+        }
+        targetUser.email = email;
+    }
+
+    if (password !== undefined && password.trim() !== "") {
+        targetUser.password = password;
+    }
 
     if (preferredNotificationChannel === "WhatsApp" && !phone && !targetUser.phone) {
          return res.status(400).json({ error: "Phone number is required for WhatsApp notifications" });
@@ -283,7 +296,7 @@ app.patch("/users/:id", async (req, res) => {
     }
 
     await targetUser.save();
-    const { password, ...safe } = targetUser.toObject();
+    const { password: _, ...safe } = targetUser.toObject();
     res.json(safe);
   } catch (err) {
     res.status(500).json({ error: err.message });
