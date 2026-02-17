@@ -1982,8 +1982,7 @@
                   )
                 )
             )
-          ),
-          renderHelpModal()
+          )
         );
       }
 
@@ -4604,7 +4603,7 @@
       }
 
       if (!currentUser) {
-        return renderAuth();
+        return e(React.Fragment, null, renderAuth(), renderHelpModal());
       }
 
       return e(
