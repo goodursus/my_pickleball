@@ -33,7 +33,7 @@ const TOURNAMENT_FORMATS = [
   "Double Elimination",
   "Pool Play",
   "Ladder",
-  "Waterfall"
+  "Scramble"
 ];
 
 // --- Helper Functions ---
