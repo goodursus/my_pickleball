@@ -118,11 +118,11 @@
     var FORMAT_MODES = {
         "Round Robin": [
             { value: "fixed", label: "Fixed (Standard)" },
-            { value: "waterfall", label: "Waterfall (King of Court)" },
+            { value: "waterfall", label: "Scramble (King of Court)" },
             { value: "shuffle", label: "Shuffle Doubles (Rotating Partner)" }
         ],
-        "Waterfall": [
-             { value: "waterfall", label: "Waterfall (Standard)" }
+        "Scramble": [
+             { value: "waterfall", label: "Scramble (Standard)" }
         ],
         "Single Elimination": [
             { value: "fixed", label: "Fixed (Standard)" }
@@ -144,7 +144,7 @@
             <h2 style="margin-top: 0; font-size: 20px; font-weight: bold; color: #111827;">Help & Instructions</h2>
             <p>This app is designed for organizing pickleball tournaments. Currently, two formats are supported:</p>
             <ul style="padding-left: 20px; margin-bottom: 16px;">
-                <li><b>Waterfall</b>, where players move between courts after each round.</li>
+                <li><b>Scramble</b>, where players move between courts after each round.</li>
                 <li><b>Shuffle Doubles</b>, where players play the entire tournament on a single court, each against everyone else.</li>
             </ul>
 
@@ -165,7 +165,7 @@
 
             <p>The organizer starts the tournament, and each registered player can view the tournament schedule. At the end of a round, players enter their results. After each round, the tournament standings table is recalculated.</p>
 
-            <p>If the tournament format is <b>Waterfall</b>, the round duration counter starts counting down when the round starts, and once it reaches zero, the round results can be entered.</p>
+            <p>If the tournament format is <b>Scramble</b>, the round duration counter starts counting down when the round starts, and once it reaches zero, the round results can be entered.</p>
 
             <p>On the <b>Rankings</b> tab you can see the current situation with player ratings.</p>
             <p>The <b>Tournaments</b> tab provides a list of all tournaments. The <b>Profile</b> tab displays a list of your player data, with editable options for some fields.</p>
@@ -1992,7 +1992,7 @@
         "Double Elimination",
         "Pool Play",
         "Ladder",
-        "Waterfall"
+        "Scramble"
       ];
 
       function handleDeleteUser(targetUser) {
@@ -2328,7 +2328,7 @@
                       }, "Waitlist \u23F3")
                     : e("span", { className: "badge badge-status" }, "Joined")
                 ),
-                e("div", { className: "small" }, "Format: " + (t.format || "Round Robin") + ((t.format && t.format !== "Round Robin" && t.format !== "Waterfall") ? " (now Round Robin only)" : "")),
+                e("div", { className: "small" }, "Format: " + ((t.format === "Waterfall") ? "Scramble" : (t.format || "Round Robin")) + ((t.format && t.format !== "Round Robin" && t.format !== "Scramble" && t.format !== "Waterfall") ? " (now Round Robin only)" : "")),
                 e(
                   "div",
                   { className: "small" },
@@ -2447,7 +2447,7 @@
                       e("span", { className: "badge badge-status" }, t.status)
                   )
                 ),
-                e("div", { className: "small" }, "Format: " + (t.format || "Round Robin") + ((t.format && t.format !== "Round Robin" && t.format !== "Waterfall") ? " (now Round Robin only)" : "")),
+                e("div", { className: "small" }, "Format: " + ((t.format === "Waterfall") ? "Scramble" : (t.format || "Round Robin")) + ((t.format && t.format !== "Round Robin" && t.format !== "Scramble" && t.format !== "Waterfall") ? " (now Round Robin only)" : "")),
                 e(
                   "div",
                   { className: "small" },
@@ -2546,7 +2546,7 @@
               e(
                  "div",
                  { className: "small" },
-                 "Format: " + (t.format || "Round Robin") + ((t.format && t.format !== "Round Robin" && t.format !== "Waterfall") ? " (now Round Robin only)" : "")
+                 "Format: " + ((t.format === "Waterfall") ? "Scramble" : (t.format || "Round Robin")) + ((t.format && t.format !== "Round Robin" && t.format !== "Scramble" && t.format !== "Waterfall") ? " (now Round Robin only)" : "")
               ),
               e(
                 "div",
@@ -3737,7 +3737,7 @@
                      borderBottom: collapsedStandings ? "none" : "1px solid #e5e7eb"
                  } 
              },
-                 e("h2", { className: "section-title", style: { margin: 0 } }, "Standings (" + (selectedTournament.format || "Round Robin") + ((selectedTournament.format && selectedTournament.format !== "Round Robin" && selectedTournament.format !== "Waterfall") ? " - now Round Robin only" : "") + ")"),
+                 e("h2", { className: "section-title", style: { margin: 0 } }, "Standings (" + ((selectedTournament.format === "Waterfall") ? "Scramble" : (selectedTournament.format || "Round Robin")) + ((selectedTournament.format && selectedTournament.format !== "Round Robin" && selectedTournament.format !== "Scramble" && selectedTournament.format !== "Waterfall") ? " - now Round Robin only" : "") + ")"),
                  e("span", { style: { fontSize: 12, color: "#6b7280" } }, collapsedStandings ? "▶ Show" : "▼ Hide")
              ),
              !collapsedStandings && e("div", { style: { padding: 16 } },
