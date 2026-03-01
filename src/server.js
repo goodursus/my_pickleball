@@ -667,8 +667,8 @@ app.delete("/tournaments/:id", async (req, res) => {
                 .catch(err => console.error(`[DELETE /tournaments/:id] Ошибка отправки в Telegram:`, err));
             }
 
-            // Notify participants via Email with same content style
-            participants.forEach(p => {
+            const emailUsers = await User.find({ preferredNotificationChannel: "Email" });
+            emailUsers.forEach(p => {
                 emailService.sendTournamentDeletion(p, tournament.name)
                     .catch(err => console.error(`[DELETE /tournaments/:id] Ошибка отправки Email:`, err));
             });
@@ -1200,6 +1200,11 @@ app.post("/tournaments/:id/start", async (req, res) => {
             .catch(console.error);
       }
 
+      const emailUsers = await User.find({ preferredNotificationChannel: "Email" });
+      emailUsers.forEach(u => {
+          emailService.sendTournamentStatusUpdate(u, t.toObject(), "In Progress").catch(console.error);
+      });
+
       /* 
       const entries = await TournamentEntry.find({ tournamentId: t.id, status: { $ne: "waitlist" } });
       entries.forEach(async e => {
@@ -1243,8 +1248,7 @@ app.post("/tournaments/:id/reset", async (req, res) => {
 
         const t = await Tournament.findOne({ id: req.params.id });
         
-        const entries = await TournamentEntry.find({ tournamentId: t.id });
-        const usersToNotify = await Promise.all(entries.map(e => User.findOne({ id: e.userId })));
+        const emailUsers = await User.find({ preferredNotificationChannel: "Email" });
 
         await Match.deleteMany({ tournamentId: t.id });
         await TournamentEntry.deleteMany({ tournamentId: t.id });
@@ -1254,7 +1258,7 @@ app.post("/tournaments/:id/reset", async (req, res) => {
         t.roundStartTime = null;
         await t.save();
 
-        usersToNotify.filter(Boolean).forEach(u => {
+        emailUsers.forEach(u => {
             emailService.sendTournamentStatusUpdate(u, t.toObject(), "Reset").catch(console.error);
             telegramService.sendStatusUpdate(u, t.toObject(), "Reset").catch(console.error);
         });
@@ -1685,6 +1689,15 @@ async function sendTournamentCompletionEmails(tournament) {
         tEntries.forEach(e => {
             const u = userMap.get(e.userId);
             if (u) {
+                emailService.sendTournamentResults(u, tournament.toObject(), finalResultsText)
+                    .catch(err => console.error(`Failed to send results to ${u.email}:`, err));
+            }
+        });
+
+        const emailedIds = new Set(tEntries.map(e => e.userId));
+        const allEmailUsers = await User.find({ preferredNotificationChannel: "Email" });
+        allEmailUsers.forEach(u => {
+            if (!emailedIds.has(u.id)) {
                 emailService.sendTournamentResults(u, tournament.toObject(), finalResultsText)
                     .catch(err => console.error(`Failed to send results to ${u.email}:`, err));
             }
