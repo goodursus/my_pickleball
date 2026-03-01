@@ -474,38 +474,9 @@ app.post("/tournaments", async (req, res) => {
         status: "confirmed"
     });
 
-    // Send Invitation to all users
-    const allUsers = await User.find({});
-    allUsers.forEach(u => {
-        // Skip individual Telegram invite if user's chat ID matches the admin broadcast group ID
-        // This prevents duplicate messages if the admin is testing with their own ID as the "Group ID"
-        // OR if the user is in the group and we want to avoid spam (but we can't know if they are in the group).
-        // BUT, the issue reported is "3 messages".
-        // 1. To Player 1
-        // 2. To Player 2
-        // 3. To Admin Broadcast Group
-        // If all 3 are in the SAME group/chat, they see 3 messages.
-        // If the "Group ID" is actually a private chat ID of one of the users, that user sees 2.
-        
-        // The user said: "У меня два игрока с Телеграм и админ. При создании турнира в Телеграм вывалилось подряд три одинаковыъ сообщения."
-        // This implies that the loop below is sending to EVERYONE individually.
-        // AND we added the broadcast.
-        
-        // If the goal is "Разовое сообщение в общий чат", then we should NOT send individual messages to users who are likely in that chat.
-        // However, we don't know who is in the chat.
-        
-        // BUT, if the user request was "Make admin broadcast instead of spamming everyone", 
-        // maybe we should DISABLE the individual loop entirely for Telegram?
-        // "Сделай... для того, чтобы сообщения об общих событиях турниров не спамились, а были разовыми."
-        // This strongly suggests we should STOP sending individual Telegram invitations if we are sending a Broadcast.
-        
+    const emailUsers = await User.find({ preferredNotificationChannel: "Email" });
+    emailUsers.forEach(u => {
         emailService.sendTournamentInvitation(u, tournament.toObject()).catch(err => console.error(`Failed to send invite to ${u.email}:`, err));
-        
-        // Only send individual TG invite if NO broadcast is configured OR if we want both (which user seems to NOT want).
-        // Let's assume: If Admin Group is set, we rely on that for "New Tournament" announcements and disable individual TG spam.
-        if (!user.adminTelegramGroupId) {
-             telegramService.sendTournamentInvitation(u, tournament.toObject()).catch(err => console.error(`Failed to send TG invite to ${u.email}:`, err));
-        }
     });
 
     // Notify Admin Broadcast Group about creation (Anonymous/Broadcast style)
