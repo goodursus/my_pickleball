@@ -1,230 +1,180 @@
-const nodemailer = require("nodemailer");
+const axios = require("axios");
 
-// Create a transporter. 
-// For development without SMTP, we can use 'streamTransport' (logs to console/buffer) or Ethereal.
-// Since we want to see the "output" in the logs as proof of work for the user, 
-// we will just log the email details to the console if SMTP is not configured.
-// Ideally, the user would provide SMTP_HOST, SMTP_USER, etc. in environment variables.
+function renderTemplate(title, bodyHtml) {
+  const brand = {
+    name: "Pickleball Tournament",
+    primary: "#3b82f6",
+    dark: "#111827",
+    text: "#374151",
+    muted: "#6b7280",
+    bg: "#f3f4f6"
+  };
+  return `
+  <html>
+    <body style="margin:0;padding:0;background:${brand.bg};font-family:Arial,Helvetica,sans-serif;color:${brand.text}">
+      <div style="max-width:640px;margin:24px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 10px 20px rgba(0,0,0,0.08)">
+        <div style="background:${brand.dark};color:#ffffff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:20px">🏓</span>
+            <strong style="font-size:16px">${brand.name}</strong>
+          </div>
+          <span style="font-size:12px;opacity:0.85">${title}</span>
+        </div>
+        <div style="padding:20px">${bodyHtml}</div>
+        <div style="padding:14px 20px;border-top:1px solid #e5e7eb;color:${brand.muted};font-size:12px">
+          This is an automated message. Replies are handled at
+          <a href="mailto:vetursus@gmail.com" style="color:${brand.primary};text-decoration:none">vetursus@gmail.com</a>.
+        </div>
+      </div>
+    </body>
+  </html>
+  `;
+}
 
-// --- MAILJET CONFIGURATION ---
-// Host: in-v3.mailjet.com
-// Port: 587
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: Number(process.env.SMTP_PORT) === 465, // True for 465, false for other ports
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-    }
-});
+async function sendEmail(to, subject, text, htmlBody) {
+  const apiKey = process.env.BREVO_API_KEY;
+  const url = "https://api.brevo.com/v3/smtp/email";
+  const sender = { name: "Pickleball Tournament", email: (process.env.SENDER_EMAIL || "veteranpickle@gmail.com") };
+  const replyTo = { email: "vetursus@gmail.com", name: "Organizer" };
+  const appUrl = process.env.APP_URL || "https://pickleball-app-s5wk.onrender.com/app";
 
-async function sendEmail(to, subject, text, html) {
-    try {
-        console.log(`[Email Service] Sending email to ${to}...`);
-        
-        // Mailjet requires the "From" address to be a verified sender in their dashboard.
-        // Usually, this is the email you signed up with.
-        // We assume you verified 'veteranpickle@gmail.com' (or similar).
-        // Using a hardcoded sender for safety if SMTP_USER is the API Key (which it is for Mailjet).
-        // WARNING: You must replace 'veteranpickle@gmail.com' below with YOUR VERIFIED MAILJET SENDER EMAIL
-        // if SMTP_USER is an API key (which is NOT an email).
-        
-        // Let's try to use a specific env var for sender, or fallback to a hardcoded one if you prefer.
-        // For now, I will use a new env var SENDER_EMAIL if it exists, otherwise I'll try to guess.
-        // Since Mailjet SMTP_USER is an API Key (e.g. "a1b2..."), we CANNOT use it as the "From" address.
-        
-        const senderEmail = process.env.SENDER_EMAIL || "veteranpickle@gmail.com"; 
+  if (!apiKey) {
+    console.log("[Email Service] BREVO_API_KEY not set; preview:");
+    console.log("To:", to);
+    console.log("Subject:", subject);
+    console.log("Text:", text);
+    return;
+  }
 
-        const info = await transporter.sendMail({
-            from: `"Pickleball App" <${senderEmail}>`,
-            to: to,
-            replyTo: senderEmail,
-            subject: subject,
-            text: text,
-            html: html
-        });
+  const htmlContent = renderTemplate(subject, htmlBody || `<pre style="white-space:pre-wrap">${text}</pre>`);
 
-        // Log the message for verification
-        console.log("---------------------------------------------------");
-        console.log(`EMAIL SENT TO: ${to}`);
-        console.log(`SUBJECT: ${subject}`);
-        console.log(`CONTENT: ${text}`);
-        console.log("---------------------------------------------------");
-        
-        return info;
-    } catch (error) {
-        console.error("[Email Service] Error sending email:", error);
-    }
+  const payload = {
+    sender,
+    to: [{ email: to }],
+    replyTo,
+    subject,
+    htmlContent
+  };
+
+  const response = await axios.post(url, payload, {
+    headers: { "api-key": apiKey, "Content-Type": "application/json" }
+  });
+  console.log(`✅ Email sent to ${to} (${response.data && response.data.messageId || "ok"})`);
+  return response.data;
 }
 
 const emailService = {
-    sendWelcomeEmail: async (user) => {
-        if (user.preferredNotificationChannel !== "Email") return;
+  sendWelcomeEmail: async (user) => {
+    if (user.preferredNotificationChannel !== "Email") return;
+    const subject = `Welcome, ${user.fullName}!`;
+    const text = `Welcome ${user.fullName}!\n\nYou have successfully subscribed to Pickleball Tournament notifications.`;
+    const html = `<h2 style="margin:0 0 8px">Welcome ${user.fullName}!</h2><p>You have successfully subscribed to Pickleball Tournament notifications.</p>`;
+    return sendEmail(user.email, subject, text, html);
+  },
 
-        const subject = "Welcome to Pickleball App!";
-        const text = `Dear ${user.fullName},
+  sendTournamentInvitation: async (user, tournament) => {
+    if (user.preferredNotificationChannel !== "Email") return;
+    const dateObj = tournament.startDate ? new Date(tournament.startDate) : null;
+    const dateStr = dateObj ? dateObj.toLocaleDateString('en-US') : "TBD";
+    const timeStr = dateObj ? dateObj.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit', hour12: true}) : "";
+    const weekday = dateObj ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : "";
+    const locName = tournament.location ? tournament.location.name : "Location not set";
+    const locCity = tournament.location && tournament.location.city ? `, ${tournament.location.city}` : "";
+    const subject = `🏆 New Tournament: ${tournament.name}`;
+    const text = `🏆 New Tournament: ${tournament.name}\n\n📅 ${weekday} ${dateStr} ${timeStr}\n📍 ${locName}${locCity}\nℹ️ Format: ${tournament.format} (${tournament.type || "Singles"}) - Mode: ${tournament.schedulingMode || "fixed"}\n🏟️ Courts: ${tournament.courtsCount || "?"}\n🔄 Rounds: ${tournament.roundsCount || "?"}\n⏱️ Duration: ${tournament.durationMinutes || "?"} minutes\n👥 Max participants: ${tournament.maxParticipants || "Unlimited"}\nStatus: ${tournament.status}\n\nLog in to the app to join!`;
+    const html = `
+      <h2 style="margin:0 0 8px">🏆 New Tournament: ${tournament.name}</h2>
+      <div style="margin:10px 0">
+        📅 ${weekday} ${dateStr} ${timeStr}<br/>
+        📍 ${locName}${locCity}<br/>
+        ℹ️ Format: ${tournament.format} (${tournament.type || "Singles"}) • Mode: ${tournament.schedulingMode || "fixed"}<br/>
+        🏟️ Courts: ${tournament.courtsCount || "?"} • 🔄 Rounds: ${tournament.roundsCount || "?"}<br/>
+        ⏱️ Duration: ${tournament.durationMinutes || "?"} minutes • 👥 Max: ${tournament.maxParticipants || "Unlimited"}<br/>
+        Status: ${tournament.status}
+      </div>
+      <a href="${appUrl}" style="display:inline-block;background:#3b82f6;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">Open App</a>
+    `;
+    return sendEmail(user.email, subject, text, html);
+  },
 
-Welcome to the Pickleball Tournament App! 
-We are excited to have you on board. We wish you great success and many victories in future tournaments.
+  sendTournamentRegistrationConfirmation: async (user, tournament, status) => {
+    if (user.preferredNotificationChannel !== "Email") return;
+    const dateObj = tournament.startDate ? new Date(tournament.startDate) : null;
+    const dateStr = dateObj ? dateObj.toLocaleDateString('en-US') : "TBD";
+    const timeStr = dateObj ? dateObj.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit', hour12: true}) : "";
+    const weekday = dateObj ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : "";
+    const statusIcon = status === "confirmed" ? "✅" : "⏳";
+    const subject = `${statusIcon} Registration Update: ${tournament.name}`;
+    const text = `Dear ${user.fullName},\n\n${statusIcon} Registration Update: ${tournament.name}\n📅 ${weekday} ${dateStr} ${timeStr}\n\nStatus: ${status.toUpperCase()}\n${status === "waitlist" ? "You are on the waitlist." : "You are a confirmed participant."}`;
+    const html = `
+      <h2 style="margin:0 0 8px">${statusIcon} Registration Update: ${tournament.name}</h2>
+      <p>Dear ${user.fullName},</p>
+      <p>📅 ${weekday} ${dateStr} ${timeStr}</p>
+      <p><b>Status:</b> ${status.toUpperCase()}</p>
+      <p>${status === "waitlist" ? "You are on the waitlist." : "You are a confirmed participant."}</p>
+      <a href="${process.env.APP_URL || "https://pickleball-app-s5wk.onrender.com/app"}" style="display:inline-block;background:#3b82f6;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">Open App</a>
+    `;
+    return sendEmail(user.email, subject, text, html);
+  },
 
-Best regards,
-The Pickleball Team`;
-        
-        const html = `<h2>Welcome, ${user.fullName}!</h2>
-<p>Welcome to the <b>Pickleball Tournament App</b>!</p>
-<p>We are excited to have you on board. We wish you great success and many victories in future tournaments.</p>
-<p>Best regards,<br>The Pickleball Team</p>`;
+  sendTournamentWithdrawalConfirmation: async (user, tournament) => {
+    if (user.preferredNotificationChannel !== "Email") return;
+    const dateObj = tournament.startDate ? new Date(tournament.startDate) : null;
+    const dateStr = dateObj ? dateObj.toLocaleDateString('en-US') : "TBD";
+    const timeStr = dateObj ? dateObj.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit', hour12: true}) : "";
+    const weekday = dateObj ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : "";
+    const subject = `🚫 Withdrawal Confirmed: ${tournament.name}`;
+    const text = `Dear ${user.fullName},\n\n🚫 Withdrawal Confirmed: ${tournament.name}\n📅 ${weekday} ${dateStr} ${timeStr}\n\nYou have been removed from the list.`;
+    const html = `
+      <h2 style="margin:0 0 8px">🚫 Withdrawal Confirmed: ${tournament.name}</h2>
+      <p>Dear ${user.fullName},</p>
+      <p>📅 ${weekday} ${dateStr} ${timeStr}</p>
+      <p>You have been removed from the list.</p>
+      <a href="${process.env.APP_URL || "https://pickleball-app-s5wk.onrender.com/app"}" style="display:inline-block;background:#3b82f6;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">Open App</a>
+    `;
+    return sendEmail(user.email, subject, text, html);
+  },
 
-        return sendEmail(user.email, subject, text, html);
-    },
+  sendTournamentResults: async (user, tournament, resultsText) => {
+    if (user.preferredNotificationChannel !== "Email") return;
+    const subject = `🏁 Tournament Finished: ${tournament.name}`;
+    const text = `🏁 Tournament Finished: ${tournament.name}\n\nResults:\n${resultsText}`;
+    const html = `
+      <h2 style="margin:0 0 8px">🏁 Tournament Finished: ${tournament.name}</h2>
+      <pre style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;white-space:pre-wrap">${resultsText}</pre>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="${process.env.APP_URL || "https://pickleball-app-s5wk.onrender.com/app"}" style="display:inline-block;background:#3b82f6;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">Open App</a>
+        <a href="${(process.env.APP_URL || "https://pickleball-app-s5wk.onrender.com/app") + (tournament && tournament.id ? ("?t=" + tournament.id + "&view=standings") : "")}" style="display:inline-block;background:#ffffff;color:#3b82f6;padding:10px 14px;border-radius:8px;text-decoration:none;border:1px solid #3b82f6">View Standings</a>
+      </div>
+    `;
+    return sendEmail(user.email, subject, text, html);
+  },
 
-    sendTournamentInvitation: async (user, tournament) => {
-        if (user.preferredNotificationChannel !== "Email") return;
+  sendTournamentStatusUpdate: async (user, tournament, status) => {
+    if (user.preferredNotificationChannel !== "Email") return;
+    let msg = `Update: ${tournament.name} is now ${status}.`;
+    if (status === "In Progress") msg = `🚀 Tournament STARTED: ${tournament.name}\nCheck your matches!`;
+    if (status === "Reset") msg = `🔄 Tournament RESET: ${tournament.name}`;
+    const subject = `Tournament Update: ${tournament.name}`;
+    const text = `Dear ${user.fullName},\n\n${msg}`;
+    const html = `
+      <h2 style="margin:0 0 8px">Tournament Update</h2>
+      <p>${msg.replace(/\n/g, "<br/>")}</p>
+      <a href="${process.env.APP_URL || "https://pickleball-app-s5wk.onrender.com/app"}" style="display:inline-block;background:#3b82f6;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">Open App</a>
+    `;
+    return sendEmail(user.email, subject, text, html);
+  },
 
-        const subject = `Invitation: ${tournament.name}`;
-        const locationStr = tournament.location ? `${tournament.location.name}, ${tournament.location.city}` : "TBD";
-        const dateStr = tournament.startDate ? new Date(tournament.startDate).toLocaleDateString() : "TBD";
-        const timeStr = tournament.startDate ? new Date(tournament.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "";
-        
-        const text = `Dear ${user.fullName},
-
-We are happy to invite you to participate in our new tournament: "${tournament.name}"!
-
-Details:
-- Date: ${dateStr} ${timeStr}
-- Location: ${locationStr}
-- Format: ${tournament.format || "Round Robin"}
-
-Log in to the app to register now!
-
-Best regards,
-The Pickleball Team`;
-
-        const html = `<h3>New Tournament Invitation!</h3>
-<p>Dear ${user.fullName},</p>
-<p>We are happy to invite you to participate in our new tournament: <b>${tournament.name}</b>!</p>
-<ul>
-<li><b>Date:</b> ${dateStr} ${timeStr}</li>
-<li><b>Location:</b> ${locationStr}</li>
-<li><b>Format:</b> ${tournament.format || "Round Robin"}</li>
-</ul>
-<p><a href="http://localhost:3000">Log in to the app</a> to register now!</p>
-<p>Best regards,<br>The Pickleball Team</p>`;
-
-        return sendEmail(user.email, subject, text, html);
-    },
-
-    sendTournamentRegistrationConfirmation: async (user, tournament, status) => {
-        if (user.preferredNotificationChannel !== "Email") return;
-
-        const subject = `Registration Confirmation: ${tournament.name}`;
-        const statusMsg = status === "waitlist" 
-            ? "You are currently on the WAITLIST." 
-            : "You are successfully registered as a PARTICIPANT.";
-            
-        const text = `Dear ${user.fullName},
-
-This email confirms your registration for "${tournament.name}".
-
-Status: ${statusMsg}
-
-We will notify you if there are any changes.
-
-Best regards,
-The Pickleball Team`;
-
-        const html = `<h3>Registration Confirmed</h3>
-<p>Dear ${user.fullName},</p>
-<p>This email confirms your registration for <b>${tournament.name}</b>.</p>
-<p><b>Status:</b> ${statusMsg}</p>
-<p>We will notify you if there are any changes.</p>
-<p>Best regards,<br>The Pickleball Team</p>`;
-
-        return sendEmail(user.email, subject, text, html);
-    },
-
-    sendTournamentWithdrawalConfirmation: async (user, tournament) => {
-        if (user.preferredNotificationChannel !== "Email") return;
-
-        const subject = `Withdrawal Confirmation: ${tournament.name}`;
-        
-        const text = `Dear ${user.fullName},
-
-This email confirms your withdrawal from "${tournament.name}".
-
-If this was a mistake, please register again through the application.
-
-Best regards,
-The Pickleball Team`;
-
-        const html = `<h3>Withdrawal Confirmed</h3>
-<p>Dear ${user.fullName},</p>
-<p>This email confirms your withdrawal from <b>${tournament.name}</b>.</p>
-<p>If this was a mistake, please register again through the application.</p>
-<p>Best regards,<br>The Pickleball Team</p>`;
-
-        return sendEmail(user.email, subject, text, html);
-    },
-
-    sendTournamentResults: async (user, tournament, resultsText) => {
-        if (user.preferredNotificationChannel !== "Email") return;
-
-        const subject = `Results: ${tournament.name}`;
-        
-        const text = `Dear ${user.fullName},
-
-The tournament "${tournament.name}" has concluded. Thank you for participating!
-
-Here are the final results:
-
-${resultsText}
-
-We wish you continued success in your pickleball journey!
-
-Best regards,
-The Pickleball Team`;
-
-        // Simple HTML version - converting newlines to <br> for the table part
-        const html = `<h3>Tournament Results</h3>
-<p>Dear ${user.fullName},</p>
-<p>The tournament <b>${tournament.name}</b> has concluded. Thank you for participating!</p>
-<p>Here are the final results:</p>
-<pre>${resultsText}</pre>
-<p>We wish you continued success in your pickleball journey!</p>
-<p>Best regards,<br>The Pickleball Team</p>`;
-
-        return sendEmail(user.email, subject, text, html);
-    },
-
-    sendTournamentStatusUpdate: async (user, tournament, status) => {
-        if (user.preferredNotificationChannel !== "Email") return;
-
-        const subject = `Tournament Update: ${tournament.name}`;
-        
-        let message = "";
-        if (status === "In Progress") {
-            message = `The tournament "${tournament.name}" has STARTED! Please check your match schedule in the app.`;
-        } else if (status === "Reset") {
-            message = `The tournament "${tournament.name}" has been RESET by the organizer. All matches and entries have been cleared.`;
-        } else {
-            message = `The status of tournament "${tournament.name}" has changed to: ${status}.`;
-        }
-        
-        const text = `Dear ${user.fullName},
-
-${message}
-
-Best regards,
-The Pickleball Team`;
-
-        const html = `<h3>Tournament Update</h3>
-<p>Dear ${user.fullName},</p>
-<p>${message}</p>
-<p>Best regards,<br>The Pickleball Team</p>`;
-
-        return sendEmail(user.email, subject, text, html);
-    }
+  sendTournamentDeletion: async (user, tournamentName) => {
+    if (user.preferredNotificationChannel !== "Email") return;
+    const subject = `🗑️ Tournament Deleted: ${tournamentName}`;
+    const text = `🗑️ Tournament Deleted: ${tournamentName}`;
+    const html = `
+      <h2 style="margin:0 0 8px">🗑️ Tournament Deleted: ${tournamentName}</h2>
+      <a href="${process.env.APP_URL || "https://pickleball-app-s5wk.onrender.com/app"}" style="display:inline-block;background:#3b82f6;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">Open App</a>
+    `;
+    return sendEmail(user.email, subject, text, html);
+  }
 };
 
 module.exports = emailService;

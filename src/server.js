@@ -639,6 +639,11 @@ app.delete("/tournaments/:id", async (req, res) => {
                 return res.status(403).json({ error: "You can delete only tournaments you created" });
             }
 
+            // Collect participants (for email notifications) BEFORE deletion
+            const tEntries = await TournamentEntry.find({ tournamentId: tournament.id });
+            const userIds = tEntries.map(e => e.userId);
+            const participants = await User.find({ id: { $in: userIds } });
+
             await Match.deleteMany({ tournamentId: tournament.id });
             await TournamentEntry.deleteMany({ tournamentId: tournament.id });
             await Tournament.deleteOne({ id: tournament.id });
@@ -661,6 +666,12 @@ app.delete("/tournaments/:id", async (req, res) => {
                 }, tournament.name)
                 .catch(err => console.error(`[DELETE /tournaments/:id] Ошибка отправки в Telegram:`, err));
             }
+
+            // Notify participants via Email with same content style
+            participants.forEach(p => {
+                emailService.sendTournamentDeletion(p, tournament.name)
+                    .catch(err => console.error(`[DELETE /tournaments/:id] Ошибка отправки Email:`, err));
+            });
 
             res.json({ success: true, message: "Tournament and related data deleted" });
         } catch (err) {
