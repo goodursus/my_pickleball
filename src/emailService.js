@@ -92,7 +92,7 @@ const emailService = {
         ⏱️ Duration: ${tournament.durationMinutes || "?"} minutes • 👥 Max: ${tournament.maxParticipants || "Unlimited"}<br/>
         Status: ${tournament.status}
       </div>
-      <a href="${appUrl}" style="display:inline-block;background:#3b82f6;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">Open App</a>
+      <a href="${process.env.APP_URL || "https://pickleball-app-s5wk.onrender.com/app"}" style="display:inline-block;background:#3b82f6;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">Open App</a>
     `;
     return sendEmail(user.email, subject, text, html);
   },

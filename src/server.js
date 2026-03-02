@@ -475,6 +475,10 @@ app.post("/tournaments", async (req, res) => {
     });
 
     const emailUsers = await User.find({ preferredNotificationChannel: "Email" });
+    console.log(`[CREATE] Sending invitation emails to ${emailUsers.length} users`);
+    try {
+        console.log(`[CREATE] Recipients:`, emailUsers.map(u => u.email));
+    } catch(e) {}
     emailUsers.forEach(u => {
         emailService.sendTournamentInvitation(u, tournament.toObject()).catch(err => console.error(`Failed to send invite to ${u.email}:`, err));
     });

@@ -170,7 +170,12 @@
             <p>On the <b>Rankings</b> tab you can see the current situation with player ratings.</p>
             <p>The <b>Tournaments</b> tab provides a list of all tournaments. The <b>Profile</b> tab displays a list of your player data, with editable options for some fields.</p>
 
-            <p>The app has a tournament event notification system, which is reflected in the <b>Notification Preference</b> field of your profile. Currently, only the Telegram system is supported, as free access to email and WhatsApp services is not yet available. For Telegram, you must fill in the <b>Telegram Chat ID</b> field in your profile. To do this, find the Telegram bot <code>@PickleballVeteranBot</code> or the chat name <code>PickleballNotifyBot</code>, enter the command <code>/start</code>, copy the code, and enter it in the Telegram Chat ID field. Notifications are triggered by the following tournament events: tournament creation, joining a tournament, leaving a tournament, tournament start, and tournament end, with the display of tournament standings.</p>
+            <p>The app has a tournament event notification system, configured via the <b>Notification Preference</b> field in your profile. Both <b>Telegram</b> and <b>Email</b> are supported.</p>
+            <ul style="padding-left: 20px; margin-bottom: 16px;">
+              <li><b>Telegram:</b> fill in <b>Telegram Chat ID</b> by starting the bot <code>@PickleballVeteranBot</code> or <code>PickleballNotifyBot</code> and sending <code>/start</code>. Copy the chat ID and paste it into your profile.</li>
+              <li><b>Email:</b> select <b>Email</b> in <b>Notification Preference</b>. Make sure your email in the profile is correct. Emails are sent for general events (creation, start, reset, completion, deletion) and personal events (join/leave/waitlist changes). If you don’t see emails, check Spam/Promotions.</li>
+            </ul>
+            <p>Notifications are triggered by the following tournament events: tournament creation, joining a tournament, leaving a tournament, tournament start, and tournament end with standings. For Email, broadcast notifications go to all players who selected Email in the profile; personal notifications go only to the involved player.</p>
 
             <h3 style="font-size: 18px; font-weight: bold; margin-top: 24px; color: #111827;">Brief rules for calculating player ratings (analogous to DUPR)</h3>
             <p>The rating system is based on a probability model that takes into account the strength of opponents and the outcome of the match.</p>
